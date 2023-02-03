@@ -23,7 +23,7 @@ That process remembered me of times when I learned vocabulary for school and I w
 
 ## Progress/Open topics
 
-- HTML article download ✅
+- HTML article download (including local caching on first download) ✅
 - Reading article into data structure that can be processed to extract relevant content: ✅
 - Base logic for splitting article content into flash cards ✅
 - Creating scannable QR codes from links in documents ✅
