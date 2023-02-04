@@ -39,6 +39,8 @@ async function doStuff(options) {
   await generatePdf(cards, pdfPathAndFilename);
 }
 
+/////////////////////////////// GET CONTENT ///////////////////////////////
+
 async function getContent(website, options) {
   // ------------ IGNORE CACHE ------------
   if (!options || !options.cachePathAndFilename) {
@@ -127,10 +129,10 @@ async function generatePdf(cards, pathAndFilename) {
     // get headline only for single-page cards of first page of multi-page cards
     var headlineHtml = "";
     if (card.xOfNX === null || (card.xOfNX && card.xOfNX === 1)) {
-      headlineHtml = `<strong>${card.headline}/${card.counter}`;
+      headlineHtml = `<h1 class="sansserif">${card.headline}/${card.counter}`;
       headlineHtml +=
         card.xOfNX !== null ? ` (${card.xOfNX}/${card.xOfNN})` : "";
-      headlineHtml += "</strong>";
+      headlineHtml += "</h1>";
     }
 
     // main content and appropriate font formatting class
@@ -205,12 +207,23 @@ async function generatePdf(cards, pathAndFilename) {
     <html>
         <head>
             <style>
+                h1 {
+                  font-size: 24px;
+                  margin: 0;
+                  padding: 8px;
+                  padding-left:10px;
+                  color: #fff;
+                  background: #000;
+                  border-bottom: 3px solid #00fad0;
+                }
+
                 body {
                     margin-top: 0cm;
                 }
 
                 p {
                     line-height: 140%;
+                    padding: 10px;
                 }
 
                 li p {
@@ -223,19 +236,16 @@ async function generatePdf(cards, pathAndFilename) {
                 table {
                     width: 100%;
                     border-collapse: collapse;
-                    // table-layout: fixed;
                 }
 
                 tr {
-                    // width: 100%;
+                  vertical-align: top;
                 }
 
                 td {
                     width: 530px;
                     height: 360px; // 240px; // 231,86px; // 185.49px;
-                    border: 1px dashed black;
-                    padding: 10px;
-                    overflow: hidden;
+                    border: 1px dashed #ddd;
                 }
 
                 .microFont {
@@ -265,6 +275,10 @@ async function generatePdf(cards, pathAndFilename) {
                 .qrCode {
                     height: 40px !important;
                     width: 40px !important;
+                }
+
+                .sansserif {
+                  font-family: Helvetica, Verdana, Arial, sans-serif;
                 }
 
             </style>
