@@ -23,7 +23,7 @@ That process remembered me of times when I learned vocabulary for school and I w
 
 ## Progress/Open topics
 
-- HTML article download ✅
+- HTML article download (including local caching on first download) ✅
 - Reading article into data structure that can be processed to extract relevant content: ✅
 - Base logic for splitting article content into flash cards ✅
 - Creating scannable QR codes from links in documents ✅
@@ -40,6 +40,6 @@ That process remembered me of times when I learned vocabulary for school and I w
 
 - I don't want to spend too much time finishing this little fun project
 - I actually want to spend time learning the actual content of the Secureum articles
-- In consequence don't expect clean JS code, test coverage etc.. I will hack this together to it done ASAP to provide value to me and other people that study the Securem content.
+- In consequence don't expect clean JS code, test coverage etc.. I will hack this together to get it done ASAP to provide value to me and other people that study the Securem content.
 - An YES, maybe it would be quicker to manually convert the Secureum article content into flashcards. But after all... that is not fun and it surely would not scale for future articles.
 - The PDFs in the Repo represent the current state of development
