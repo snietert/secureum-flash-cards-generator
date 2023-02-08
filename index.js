@@ -40,7 +40,13 @@ async function doStuff(options) {
   } = options;
 
   // download HTML from URL (and cache)
-  const html = await getContent(website, { cachePathAndFilename });
+  var html = await getContent(website, { cachePathAndFilename });
+
+  // extract and remove references
+  // TODO handle references (add an extra card!)
+  const regex = /<p><strong>References.+<\/ol>/;
+  const references = html.match(regex)[0];
+  html = html.replace(regex, "");
 
   // extract content for cards from HTML
   var cards = await convertHtmlToJsonForSelectors(html, selectors);
@@ -229,16 +235,7 @@ function handleMultipleLists(content, card, listCount) {
 }
 
 function getCardsForSplitCardContent(splitCardContent, card, clazz) {
-  const splitCards = [];
-
-  // get clazz all split cards of a card by the longest split card
-  // const longestCardLength = splitCardContent.slice().sort((a, b) => {
-  //   return textOnlyLength(b) - textOnlyLength(a);
-  // })[0];
-  // const { clazz } = getClazzAndSplitLength(longestCardLength);
-
-  // assemble cards from split card contents
-  splitCardContent.forEach((spc, index) => {
+  return splitCardContent.map((spc, index) => {
     card.content = null;
     const clone = JSON.parse(JSON.stringify(card));
     clone.xOfNX = splitCardContent.length > 1 ? index + 1 : null;
@@ -247,10 +244,8 @@ function getCardsForSplitCardContent(splitCardContent, card, clazz) {
     clone.clazz = clazz;
     clone.barcodes = []; //index === 1 ? barcodes : []; TODO
     clone.content = spc;
-    splitCards.push(clone);
+    return clone;
   });
-
-  return splitCards;
 }
 
 ////////////////////////// CLEAN / ENHANCE CARDS //////////////////////////
