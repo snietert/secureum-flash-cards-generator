@@ -10,8 +10,8 @@ const util = require("util");
 var HTMLParser = require("node-html-parser");
 
 // globals
-const log = false;
-const logHtml = true;
+const log = true;
+const logHtml = false;
 const meta = false;
 const limit = 1000000;
 
@@ -44,11 +44,47 @@ async function doStuff(options) {
   const refrences =
     splitPosition !== -1 ? highlevel.slice(splitPosition + 1) : null;
 
-  // package high level content into enumerated cards and additional content
+  // split content into chunks that represent cards (on a high level)
+  const chunks = getChunks(hlContent);
+
+  // get cards for chunks
+  const splitCards = await getSplitCards(chunks, headline);
+  // console.log(111, splitCards);
+
+  // generate PDF from cards content
+  await generatePdf(splitCards, pdfPathAndFilename);
+}
+
+//////////////////////////// GET/CACHE CONTENT ////////////////////////////
+
+async function getContent(website, options) {
+  const cachePathAndFilename = options.cachePathAndFilename;
+
+  // handle missing cache options
+  if (!options || !cachePathAndFilename) {
+    loggg(`Missing cache options`);
+    return (await fetchWebsiteContent(website)).data;
+  }
+
+  // get from cache if cached
+  if (fs.existsSync(cachePathAndFilename)) {
+    loggg(`Returning content from cache: ${cachePathAndFilename}`);
+    return fs.readFileSync(cachePathAndFilename).toString();
+  }
+
+  // download and write to cache
+  const html = (await fetchWebsiteContent(website)).data;
+  loggg(`Writing content to cache: ${cachePathAndFilename}`);
+  fs.writeFileSync(cachePathAndFilename, html);
+  return html;
+}
+
+////////////////////////////// PDF GNERATION //////////////////////////////
+
+function getChunks(hlContent) {
   const cards = [];
 
   // handle top level elements
-  var number;
   var lastCardNumber = null;
 
   const getStartAttribute = (element) => {
@@ -81,6 +117,8 @@ async function doStuff(options) {
 
   var card = []; // create the first card
 
+  console.log(cards);
+  console.log(cards.length);
   hlContent.forEach((hl, index) => {
     // get next highlevel content element
     const nextHlContent = hlContent[index + 1];
@@ -92,7 +130,7 @@ async function doStuff(options) {
       cardNumber = 1;
     }
 
-    // // check if a new card needs to be created
+    // check if a new card needs to be created
     if (lastCardNumber && cardNumber !== lastCardNumber) {
       saveCard(card, "hl iteration", cardNumber, lastCardNumber);
       card = [];
@@ -185,77 +223,10 @@ async function doStuff(options) {
     }
   });
 
-  console.log(cards);
-
-  return;
-
-  // process high level content separation
-  const splitCards = await getSplitCards(chunks, headline);
-  await browser.close();
-  return;
-
-  // // split HTML content into high level chunks
-  // const chunks = getChunks(elements);
-
-  // generate PDF from cards content
-  await generatePdf(highlevel, headline, pdfPathAndFilename);
+  return cards;
 }
 
-//////////////////////////// GET/CACHE CONTENT ////////////////////////////
-
-async function getContent(website, options) {
-  const cachePathAndFilename = options.cachePathAndFilename;
-
-  // handle missing cache options
-  if (!options || !cachePathAndFilename) {
-    loggg(`Missing cache options`);
-    return (await fetchWebsiteContent(website)).data;
-  }
-
-  // get from cache if cached
-  if (fs.existsSync(cachePathAndFilename)) {
-    loggg(`Returning content from cache: ${cachePathAndFilename}`);
-    return fs.readFileSync(cachePathAndFilename).toString();
-  }
-
-  // download and write to cache
-  const html = (await fetchWebsiteContent(website)).data;
-  loggg(`Writing content to cache: ${cachePathAndFilename}`);
-  fs.writeFileSync(cachePathAndFilename, html);
-  return html;
-}
-
-////////////////////////////// PDF GNERATION //////////////////////////////
-
-function getChunks(elements) {
-  const chunks = [];
-  var chunk = [];
-
-  for (let i = 0; i < elements.length; i++) {
-    const element = elements[i];
-    const nextElement = elements[i + 1];
-
-    // create new chunk
-    chunk = chunk || [];
-
-    // collect element in chunk
-    chunk.push({
-      tag: element["0"].name,
-      start: element["0"].attribs.start || null,
-      content: element,
-    });
-
-    // push chunk if chunk has ended or last element was reached
-    if (!nextElement || nextElement["0"].attribs.start) {
-      chunks.push(chunk);
-      chunk = null;
-    }
-  }
-
-  return chunks;
-}
-
-async function generatePdf(chunks, headline, pathAndFilename) {
+async function generatePdf(splitCards, pathAndFilename) {
   // start PDF generation
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
@@ -282,62 +253,64 @@ async function generatePdf(chunks, headline, pathAndFilename) {
 /////////////////////////////// SPLIT CARDS ///////////////////////////////
 
 async function getSplitCards(chunks, headline) {
-  // handle single toplevel list
-  if (chunks.length === 1) {
-    var content = chunks[0][0].content.html();
-    // content = content.substring(4);
-    // content = content.substring(0, content.length - 5);
-    var listItems = await fetchHighLevelContentSeparation(content, "li");
-    listItems = listItems.map((i) => i.text().trim()); // TODO check if necessary!
-    console.log(listItems);
-  }
-
-  return;
-
-  // handle vs.multiple top level lists with start attribute
+  var splitCards = [];
 
   // iterate all chunks
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
 
-    const startList = entry.start !== null;
+    // set card number
+    const number = i + 1;
 
-    // handle single toplevel list
+    // handle single list item
+    const singleListItem =
+      chunk.length === 1 && chunk[0].content.rawTagName === "li";
+    if (singleListItem) {
+      loggg(`Handle single list item (chunk number/index: ${i + 1}/${i})`);
+      const childNodes = chunk[0].content.childNodes;
 
-    // iterate all chunk entries
-    for (let x = 0; x < chunk.length; x++) {
-      const entry = chunk[x];
-      // console.log(111, entry);
+      // handle where a single paragraph is in list item
+      if (childNodes.length === 1 && childNodes[0].rawTagName === "p") {
+        loggg(
+          `Handle single paragraph in list item (chunk number/index: ${
+            i + 1
+          }/${i})`
+        );
+        splitCards = splitCards.concat(
+          handleSingleParagraph(childNodes[0], number, headline)
+        );
+      } else {
+        console.log(111, chunk);
+      }
     }
-
-    // // get list count
-    // const listCount = chunk.elements.filter((e) => e.tag === "ol").length;
-    // loggg(`Chunk ${i} has ${listCount} lists`);
-
-    // if (listCount === 1 && i === 2) {
-    //   splitCards = splitCards.concat(await handleOneList(chunk, headline));
-    // }
-
-    // prepare card content
-    // var content = await prepareContent(cards[i].content.toString());
-
-    // split card content split to multiple cards if required
-    // if (listCount === 0) {
-    //   splitCards = splitCards.concat(handleNoLists(chunk, cards[i]));
-    // } else if (listCount === 1) {
-
-    // } else {
-    //   splitCards = splitCards.concat(
-    //     handleMultipleLists(chunk, cards[i], listCount)
-    //   );
-    // }
   }
 
-  return [];
+  // // get list count
+  // const listCount = chunk.elements.filter((e) => e.tag === "ol").length;
+  // loggg(`Chunk ${i} has ${listCount} lists`);
+
+  // if (listCount === 1 && i === 2) {
+  //   splitCards = splitCards.concat(await handleOneList(chunk, headline));
+  // }
+
+  // prepare card content
+  // var content = await prepareContent(cards[i].content.toString());
+
+  // split card content split to multiple cards if required
+  // if (listCount === 0) {
+  //   splitCards = splitCards.concat(handleNoLists(chunk, cards[i]));
+  // } else if (listCount === 1) {
+
+  // } else {
+  //   splitCards = splitCards.concat(
+  //     handleMultipleLists(chunk, cards[i], listCount)
+  //   );
+  // }
+  return splitCards;
 }
 
-function handleNoLists(content, card) {
-  // TODO improve interface!
+function handleSingleParagraph(node, number, headline) {
+  const content = node.toString();
   const { splitLength, clazz } = getClazzAndSplitLength(content, 0);
 
   const splitCardContent = [];
@@ -357,8 +330,7 @@ function handleNoLists(content, card) {
     splitCardContent[index] += word;
   });
 
-  // return cards
-  return getCardsForSplitCardContent(splitCardContent, card, clazz);
+  return getCardsForSplitCardContent(splitCardContent, clazz, number, headline);
 }
 
 async function handleOneList(chunk, headline) {
@@ -428,14 +400,20 @@ function handleMultipleLists(content, card, listCount) {
   return getCardsForSplitCardContent(splitCardContent, card, clazz);
 }
 
-function getCardsForSplitCardContent(splitCardContent, headline, clazz) {
+function getCardsForSplitCardContent(
+  splitCardContent,
+  clazz,
+  number,
+  headline
+) {
   return splitCardContent.map((spc, index) => {
     return {
       headline,
+      counter: number,
       xOfNX: splitCardContent.length > 1 ? index + 1 : null,
       xOfNN: splitCardContent.length > 1 ? splitCardContent.length : null,
       contentLength: textOnlyLength(spc),
-      clazz: clazz,
+      clazz,
       barcodes: [], //index === 1 ? barcodes : [], TODO
       content: spc,
     };
@@ -789,13 +767,13 @@ function textOnlyLength(content) {
   });
 
   // Solidity 201
-  await doStuff({
-    website: "https://secureum.substack.com/p/solidity-201",
-    startingNumber: 102,
-    headline: "Secureum Solidity 201",
-    cachePathAndFilename: "./secureum_solidity_201.html",
-    pdfPathAndFilename: "./secureum_solidity_201.pdf",
-    selector:
-      "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
-  });
+  // await doStuff({
+  //   website: "https://secureum.substack.com/p/solidity-201",
+  //   startingNumber: 102,
+  //   headline: "Secureum Solidity 201",
+  //   cachePathAndFilename: "./secureum_solidity_201.html",
+  //   pdfPathAndFilename: "./secureum_solidity_201.pdf",
+  //   selector:
+  //     "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+  // });
 })();
