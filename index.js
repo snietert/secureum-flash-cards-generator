@@ -1,5 +1,4 @@
 const axios = require("axios");
-const htmlToJson = require("html-to-json");
 const fs = require("fs");
 const puppeteer = require("puppeteer");
 const extractUrls = require("extract-urls");
@@ -7,26 +6,14 @@ const striptags = require("striptags");
 const qrCode = require("qrcode");
 const sanitizeHtml = require("sanitize-html");
 const escape = require("escape-html");
+const util = require("util");
+var HTMLParser = require("node-html-parser");
 
 // globals
 const log = false;
-const logHtml = false;
+const logHtml = true;
 const meta = false;
 const limit = 1000000;
-// const cardsFilter = null;
-const cardsFilter = (card, index) => {
-  // return index > 40 && index < 45; // 141 true;
-  // const text = card.content.text().trim();
-  // const length = textOnlyLength(text);
-  // console.log(index + 1, text);
-  // return text.includes("Unused or Unsafe Features") || index === 0;
-  // return length > 2000;
-  // return length > 500 && length < 1000;
-  // return length < 300;
-  // return length > 1000;
-  // return length >= 300 && length <= 500;
-  return true;
-};
 
 async function doStuff(options) {
   // read options
@@ -36,33 +23,182 @@ async function doStuff(options) {
     cachePathAndFilename,
     pdfPathAndFilename,
     startingNumber,
-    selectors,
+    selector,
   } = options;
+
+  console.log(
+    `\n---------- HANDLING DOCUMENT "${headline.toUpperCase()}" ----------`
+  );
 
   // download HTML from URL (and cache)
   var html = await getContent(website, { cachePathAndFilename });
 
-  // extract and remove references
-  // TODO handle references (add an extra card!)
-  const regex = /<p><strong>References.+<\/ol>/;
-  const references = html.match(regex)[0];
-  html = html.replace(regex, "");
+  // extract the high level content separation (stacked lists and paragraphs)
+  var highlevel = await fetchHighLevelContentSeparation(html, selector);
 
-  // extract content for cards from HTML
-  var cards = await convertHtmlToJsonForSelectors(html, selectors);
-  cards = cards.slice(0, limit);
+  // split highlevel content into content and references
+  // TODO handle for list only pages (e.g. "Solidity 101")
+  const splitPosition = highlevel.findIndex((h) => h.rawTagName === "div");
+  const hlContent =
+    splitPosition !== -1 ? highlevel.slice(0, splitPosition) : highlevel;
+  const refrences =
+    splitPosition !== -1 ? highlevel.slice(splitPosition + 1) : null;
 
-  // prepare initial card data structure
-  cards = cards.map((card, index) => {
-    return {
-      headline,
-      counter: startingNumber + index,
-      content: card,
-    };
+  // package high level content into enumerated cards and additional content
+  const cards = [];
+
+  // handle top level elements
+  var number;
+  var lastCardNumber = null;
+
+  const getStartAttribute = (element) => {
+    var start = element.rawAttrs.split('"')[1];
+    return parseInt(start) || null;
+  };
+
+  const pushElement = (card, element, tag) => {
+    console.log(`push element with tag: ${tag}`);
+    card.push(element);
+  };
+
+  const saveCard = (card, where, start, lastStart) => {
+    // log where card is saved and card was empty
+    if (!card.length) {
+      console.log(
+        `-------------------- SAVE CARD IGNORED (where: "${where}", start: ${start}, last start: ${lastStart}) --------------------`
+      );
+      return;
+    }
+
+    // push card on stack and create new card
+    const tags = card.map((i) => i.content.rawTagName);
+    cards.push(card);
+    card = [];
+    console.log(
+      `-------------------- SAVE CARD (tags: ${tags}, where: "${where}", start: ${start}, last start: ${lastStart}) --------------------`
+    );
+  };
+
+  var card = []; // create the first card
+
+  hlContent.forEach((hl, index) => {
+    // get next highlevel content element
+    const nextHlContent = hlContent[index + 1];
+    var contentFollowing = nextHlContent && !getStartAttribute(nextHlContent);
+
+    // try to detect the start from the start attribute
+    var cardNumber = getStartAttribute(hl) || lastCardNumber;
+    if (cardNumber === null && hlContent.length === 1) {
+      cardNumber = 1;
+    }
+
+    // // check if a new card needs to be created
+    if (lastCardNumber && cardNumber !== lastCardNumber) {
+      saveCard(card, "hl iteration", cardNumber, lastCardNumber);
+      card = [];
+    }
+
+    // handle top level list
+    if (hl.rawTagName === "ol") {
+      console.log(
+        `# LIST (card number: ${cardNumber}, last card number: ${lastCardNumber}, children: ${hl.childNodes.length})`
+      );
+
+      // check if list items should be treated as single cards
+      const listItemsAreCards =
+        getStartAttribute(hl) !== null || (index === 0 && !nextHlContent);
+
+      // iterate all list items
+      const listItems = hl.childNodes;
+
+      listItems.forEach((li, index) => {
+        const number = cardNumber + (listItemsAreCards ? index : 0); // TODO
+        loggg(`... list item (index: ${index}, number: ${number})`);
+
+        // get next list item
+        const nextListItem = listItems[index + 1];
+
+        // push the list item onto the card
+        pushElement(
+          card,
+          {
+            type: listItemsAreCards ? "list-item-card" : "list-item",
+            content: li,
+            number,
+          },
+          "li"
+        );
+
+        // do not close card for list items that are no card
+        if (!listItemsAreCards) {
+          console.log("li iteration -> list item is no card");
+          lastCardNumber = number;
+          return;
+        }
+
+        // close card for list items that are cards
+        if (nextListItem) {
+          // close card if here is a next list item
+          loggg("li iteration -> list item is card | not last list item");
+          saveCard(card, "li iteration", cardNumber, lastCardNumber);
+          card = [];
+        } else if (!contentFollowing) {
+          // close card if there is no next list item and no content following
+          loggg(
+            "li iteration -> list item is card | last list item + no content following"
+          );
+          saveCard(card, "li iteration", cardNumber, lastCardNumber);
+          card = [];
+        } else if (contentFollowing) {
+          // do not close card if there is no next list item and content following
+          loggg(
+            "li iteration -> list item is card | last list item + content following"
+          );
+        } else {
+          throw new Error("unhandled condition!");
+        }
+
+        lastCardNumber = number;
+      });
+    }
+
+    // handle top level paragraphs
+    else if (hl.rawTagName === "p") {
+      console.log(
+        `# PARAGRAPH (card number: ${cardNumber}, last card number: ${lastCardNumber})`
+      );
+      pushElement(
+        card,
+        {
+          type: "paragraph",
+          content: hl,
+          number: lastCardNumber,
+        },
+        "p"
+      );
+    }
+
+    // close list if no next high level element
+    if (!nextHlContent) {
+      saveCard(card, "end", cardNumber, lastCardNumber);
+      card = [];
+    }
   });
 
+  console.log(cards);
+
+  return;
+
+  // process high level content separation
+  const splitCards = await getSplitCards(chunks, headline);
+  await browser.close();
+  return;
+
+  // // split HTML content into high level chunks
+  // const chunks = getChunks(elements);
+
   // generate PDF from cards content
-  await generatePdf(cards, pdfPathAndFilename);
+  await generatePdf(highlevel, headline, pdfPathAndFilename);
 }
 
 //////////////////////////// GET/CACHE CONTENT ////////////////////////////
@@ -91,18 +227,38 @@ async function getContent(website, options) {
 
 ////////////////////////////// PDF GNERATION //////////////////////////////
 
-async function generatePdf(cards, pathAndFilename) {
+function getChunks(elements) {
+  const chunks = [];
+  var chunk = [];
+
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i];
+    const nextElement = elements[i + 1];
+
+    // create new chunk
+    chunk = chunk || [];
+
+    // collect element in chunk
+    chunk.push({
+      tag: element["0"].name,
+      start: element["0"].attribs.start || null,
+      content: element,
+    });
+
+    // push chunk if chunk has ended or last element was reached
+    if (!nextElement || nextElement["0"].attribs.start) {
+      chunks.push(chunk);
+      chunk = null;
+    }
+  }
+
+  return chunks;
+}
+
+async function generatePdf(chunks, headline, pathAndFilename) {
   // start PDF generation
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
-
-  // for only seeing cards with a specific length (for tuning font sizes)
-  if (cardsFilter) {
-    cards = cards.filter(cardsFilter);
-  }
-
-  // split cards where content should be on more than 1 card
-  const splitCards = await getSplitCards(cards);
 
   // get HTMl content for render
   const html = await getHtmlForSplitCards(splitCards);
@@ -125,30 +281,59 @@ async function generatePdf(cards, pathAndFilename) {
 
 /////////////////////////////// SPLIT CARDS ///////////////////////////////
 
-async function getSplitCards(cards) {
-  var splitCards = [];
-
-  for (let i = 0; i < cards.length; i++) {
-    // prepare card content
-    var content = await prepareContent(cards[i].content.toString());
-
-    // get list count
-    const listCount = (content.match(/<ol>/g) || []).length;
-    loggg("Card", i + 1, "has lists:", listCount);
-
-    // split card content split to multiple cards if required
-    if (listCount === 0) {
-      splitCards = splitCards.concat(handleNoLists(content, cards[i]));
-    } else if (listCount === 1) {
-      splitCards = splitCards.concat(await handleOneList(content, cards[i]));
-    } else {
-      splitCards = splitCards.concat(
-        handleMultipleLists(content, cards[i], listCount)
-      );
-    }
+async function getSplitCards(chunks, headline) {
+  // handle single toplevel list
+  if (chunks.length === 1) {
+    var content = chunks[0][0].content.html();
+    // content = content.substring(4);
+    // content = content.substring(0, content.length - 5);
+    var listItems = await fetchHighLevelContentSeparation(content, "li");
+    listItems = listItems.map((i) => i.text().trim()); // TODO check if necessary!
+    console.log(listItems);
   }
 
-  return splitCards;
+  return;
+
+  // handle vs.multiple top level lists with start attribute
+
+  // iterate all chunks
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+
+    const startList = entry.start !== null;
+
+    // handle single toplevel list
+
+    // iterate all chunk entries
+    for (let x = 0; x < chunk.length; x++) {
+      const entry = chunk[x];
+      // console.log(111, entry);
+    }
+
+    // // get list count
+    // const listCount = chunk.elements.filter((e) => e.tag === "ol").length;
+    // loggg(`Chunk ${i} has ${listCount} lists`);
+
+    // if (listCount === 1 && i === 2) {
+    //   splitCards = splitCards.concat(await handleOneList(chunk, headline));
+    // }
+
+    // prepare card content
+    // var content = await prepareContent(cards[i].content.toString());
+
+    // split card content split to multiple cards if required
+    // if (listCount === 0) {
+    //   splitCards = splitCards.concat(handleNoLists(chunk, cards[i]));
+    // } else if (listCount === 1) {
+
+    // } else {
+    //   splitCards = splitCards.concat(
+    //     handleMultipleLists(chunk, cards[i], listCount)
+    //   );
+    // }
+  }
+
+  return [];
 }
 
 function handleNoLists(content, card) {
@@ -176,54 +361,63 @@ function handleNoLists(content, card) {
   return getCardsForSplitCardContent(splitCardContent, card, clazz);
 }
 
-async function handleOneList(content, card) {
-  const { splitLength, clazz } = getClazzAndSplitLength(content, 1);
+async function handleOneList(chunk, headline) {
+  loggg(`Handle chunk with tags: ${chunk.elements.map((e) => e.tag)}`);
 
-  // return if not split is required is required
-  // if (textOnlyLength(content) <= splitLength) {
-  //   return getCardsForSplitCardContent([content], card, clazz);
-  // }
+  // NOTE: Assumption is that chunks with a list always start with a list
+  if (chunk.elements[0].tag !== "ol" || chunk.elements[0].start === null) {
+    throw new Error("Chunk with single list does not start with a list!");
+  }
 
-  // get content before list
-  const beforeList = content.split("<ol>")[0];
+  // get the list content
+  const fullContent = chunk.elements.map((e) => e.element.html()).join("");
+  const beforeListContent = fullContent.split(/<ol.*>/)[0].substring(4); // TODO clean the leading <i> in a better way
+  // TODO handle after list content!
+  const listContent = chunk.elements[0].element.html();
+  console.log("LIST", listContent);
+  return;
+
+  const { splitLength, clazz } = getClazzAndSplitLength(fullContent, 1);
 
   // get all list items of list
-  var listItems = await convertHtmlToJsonForSelector(content, "li");
-  listItems = listItems.map((i) => i.text().trim());
+  var listItems = await fetchHighLevelContentSeparation(listContent, "li");
+  listItems = listItems.map((i) => i.text().trim()); // TODO check if necessary!
+
+  listItems.forEach((item, index) => {
+    console.log(123, index, item);
+  });
 
   // build 2 groups of list items
   const listItemGroups = [[]];
   listItems.forEach((item) => {
     item = escape(item);
     if (
-      textOnlyLength(beforeList) +
+      textOnlyLength(beforeListContent) +
         textOnlyLength(listItemGroups[0].join("")) +
         textOnlyLength(item) <
       splitLength
     ) {
       listItemGroups[0].push("<li>" + item + "</li>");
     } else {
-      if (!listItemGroups[1]) {
-        listItemGroups[1] = [];
-      }
+      listItemGroups[1] = listItemGroups[1] || [];
       listItemGroups[1].push("<li>" + item + "</li>");
     }
   });
 
   // build 2 card sides
   const splitCardContent = [];
-  splitCardContent[0] = beforeList + "<ol>";
+  splitCardContent[0] = `AAA1${beforeListContent}<ol>`;
   splitCardContent[0] += listItemGroups[0].join("");
-  splitCardContent[0] += "</ol>";
+  splitCardContent[0] += "</ol>AAA2" + listItemGroups[0].length;
 
   if (listItemGroups[1]) {
-    splitCardContent[1] = `<ol start="${listItemGroups[0].length + 1}">`; // TODO: Sometimes is incorrect!
+    splitCardContent[1] = `BBB1<ol start="${listItemGroups[0].length + 1}">`; // TODO: Sometimes is incorrect!
     splitCardContent[1] += listItemGroups[1].join("");
-    splitCardContent[1] += "</ol>";
+    splitCardContent[1] += "</ol>BBB2" + listItemGroups[1].length;
   }
 
   // return cards
-  return getCardsForSplitCardContent(splitCardContent, card, clazz);
+  return getCardsForSplitCardContent(splitCardContent, headline, clazz);
 }
 
 function handleMultipleLists(content, card, listCount) {
@@ -234,17 +428,17 @@ function handleMultipleLists(content, card, listCount) {
   return getCardsForSplitCardContent(splitCardContent, card, clazz);
 }
 
-function getCardsForSplitCardContent(splitCardContent, card, clazz) {
+function getCardsForSplitCardContent(splitCardContent, headline, clazz) {
   return splitCardContent.map((spc, index) => {
-    card.content = null;
-    const clone = JSON.parse(JSON.stringify(card));
-    clone.xOfNX = splitCardContent.length > 1 ? index + 1 : null;
-    clone.xOfNN = splitCardContent.length > 1 ? splitCardContent.length : null;
-    clone.contentLength = textOnlyLength(spc);
-    clone.clazz = clazz;
-    clone.barcodes = []; //index === 1 ? barcodes : []; TODO
-    clone.content = spc;
-    return clone;
+    return {
+      headline,
+      xOfNX: splitCardContent.length > 1 ? index + 1 : null,
+      xOfNN: splitCardContent.length > 1 ? splitCardContent.length : null,
+      contentLength: textOnlyLength(spc),
+      clazz: clazz,
+      barcodes: [], //index === 1 ? barcodes : [], TODO
+      content: spc,
+    };
   });
 }
 
@@ -299,9 +493,9 @@ function enhanceCardContent(content) {
   return content;
 }
 
-async function getHtmlForSplitCards(splitCards) {
+async function getHtmlForSplitCards(splitCards, headline) {
   // Prepare HTML to be rendered
-  var html;
+  var html = "";
 
   for (let i = 0; i < splitCards.length; i++) {
     // open new row
@@ -330,7 +524,6 @@ async function getHtmlForSplitCards(splitCards) {
     }
 
     var footerHtml = '<div class="footer">';
-    if (typeof card !== "object") console.log(111, card);
     card.barcodes.forEach((code) => {
       footerHtml += `<span>${code}</span>`;
     });
@@ -381,7 +574,6 @@ async function getHtmlForSplitCards(splitCards) {
               .footer {
                 position: absolute;
                 bottom: 0;
-                border: 1px solid red;
               }
 
               .meta {
@@ -558,22 +750,9 @@ function getClazzAndSplitLength(content, listCount) {
 
 /////////////////////////// GETTING THE CONTENT ///////////////////////////
 
-async function convertHtmlToJsonForSelectors(html, selectors) {
-  var collected = [];
-  for (let i = 0; i < selectors.length; i++) {
-    var result = await convertHtmlToJsonForSelector(html, selectors[i]);
-    collected = collected.concat(result);
-  }
-  return collected;
-}
-
-async function convertHtmlToJsonForSelector(html, selector) {
-  return await htmlToJson.parse(html, [
-    selector,
-    function ($item) {
-      return $item;
-    },
-  ]);
+async function fetchHighLevelContentSeparation(html, selector) {
+  return HTMLParser.parse(html).querySelector(selector).childNodes;
+  // .childNodes.map((t) => t.rawTagName);
 }
 
 async function fetchWebsiteContent(website) {
@@ -605,9 +784,8 @@ function textOnlyLength(content) {
     headline: "Secureum Solidity 101",
     cachePathAndFilename: "./secureum_solidity_101.html",
     pdfPathAndFilename: "./secureum_solidity_101.pdf",
-    selectors: [
-      "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div > ol > li",
-    ],
+    selector:
+      "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
   });
 
   // Solidity 201
@@ -617,8 +795,7 @@ function textOnlyLength(content) {
     headline: "Secureum Solidity 201",
     cachePathAndFilename: "./secureum_solidity_201.html",
     pdfPathAndFilename: "./secureum_solidity_201.pdf",
-    selectors: [
-      "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div > ol > li",
-    ],
+    selector:
+      "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
   });
 })();
