@@ -266,23 +266,53 @@ async function getSplitCards(chunks, headline) {
     const singleListItem =
       chunk.length === 1 && chunk[0].content.rawTagName === "li";
     if (singleListItem) {
-      loggg(`Handle single list item (chunk number/index: ${i + 1}/${i})`);
+      loggg(`# Handle single list item (chunk number/index: ${i + 1}/${i})`);
       const childNodes = chunk[0].content.childNodes;
 
-      // handle where a single paragraph is in list item
+      // handle a single paragraph is in list item
       if (childNodes.length === 1 && childNodes[0].rawTagName === "p") {
         loggg(
-          `Handle single paragraph in list item (chunk number/index: ${
+          `... Handle a single paragraph in list item (chunk number/index: ${
             i + 1
           }/${i})`
         );
         splitCards = splitCards.concat(
           handleSingleParagraph(childNodes[0], number, headline)
         );
-      } else {
-        console.log(111, chunk);
+        continue;
       }
+
+      // handle a single paragraph followed by a single list in list item
+      if (
+        childNodes.length === 2 &&
+        childNodes[0].rawTagName === "p" &&
+        childNodes[1].rawTagName === "ol"
+      ) {
+        loggg(
+          `... Handle a single paragraph followed by a single list in list item (chunk number/index: ${
+            i + 1
+          }/${i})`
+        );
+
+        splitCards = splitCards.concat(
+          await handleParagraphAndOneList(
+            chunk[0].content.childNodes,
+            number,
+            headline
+          )
+        );
+        continue;
+      }
+
+      console.log(
+        111,
+        childNodes.map((t) => t.rawTagName)
+      );
+
+      // handle where a paragraph followed by a single list is in lit item
     }
+
+    return splitCards;
   }
 
   // // get list count
@@ -290,7 +320,7 @@ async function getSplitCards(chunks, headline) {
   // loggg(`Chunk ${i} has ${listCount} lists`);
 
   // if (listCount === 1 && i === 2) {
-  //   splitCards = splitCards.concat(await handleOneList(chunk, headline));
+  //   splitCards = splitCards.concat(await handleParagraphAndOneList(chunk, headline));
   // }
 
   // prepare card content
@@ -333,63 +363,60 @@ function handleSingleParagraph(node, number, headline) {
   return getCardsForSplitCardContent(splitCardContent, clazz, number, headline);
 }
 
-async function handleOneList(chunk, headline) {
-  loggg(`Handle chunk with tags: ${chunk.elements.map((e) => e.tag)}`);
+async function handleParagraphAndOneList(nodes, number, headline) {
+  const paragraph = nodes[0];
+  const list = nodes[1];
 
-  // NOTE: Assumption is that chunks with a list always start with a list
-  if (chunk.elements[0].tag !== "ol" || chunk.elements[0].start === null) {
-    throw new Error("Chunk with single list does not start with a list!");
+  if (
+    nodes.length !== 2 ||
+    paragraph.rawTagName !== "p" ||
+    list.rawTagName !== "ol"
+  ) {
+    throw new Error("Chunk for paragraph with single list has wrong stucture!");
   }
 
-  // get the list content
-  const fullContent = chunk.elements.map((e) => e.element.html()).join("");
-  const beforeListContent = fullContent.split(/<ol.*>/)[0].substring(4); // TODO clean the leading <i> in a better way
-  // TODO handle after list content!
-  const listContent = chunk.elements[0].element.html();
-  console.log("LIST", listContent);
-  return;
-
+  // get the clazz based on full content length
+  const fullContent = nodes.toString();
   const { splitLength, clazz } = getClazzAndSplitLength(fullContent, 1);
 
-  // get all list items of list
-  var listItems = await fetchHighLevelContentSeparation(listContent, "li");
-  listItems = listItems.map((i) => i.text().trim()); // TODO check if necessary!
+  // get the content of the paragraph
+  const paragraphContent = paragraph.toString();
 
-  listItems.forEach((item, index) => {
-    console.log(123, index, item);
-  });
+  // get all list items
+  const listItems = list.childNodes;
 
   // build 2 groups of list items
   const listItemGroups = [[]];
   listItems.forEach((item) => {
-    item = escape(item);
+    const itemContent = item.toString();
+    item = escape(itemContent);
     if (
-      textOnlyLength(beforeListContent) +
+      textOnlyLength(paragraphContent) +
         textOnlyLength(listItemGroups[0].join("")) +
-        textOnlyLength(item) <
+        textOnlyLength(itemContent) <
       splitLength
     ) {
-      listItemGroups[0].push("<li>" + item + "</li>");
+      listItemGroups[0].push(itemContent);
     } else {
       listItemGroups[1] = listItemGroups[1] || [];
-      listItemGroups[1].push("<li>" + item + "</li>");
+      listItemGroups[1].push(itemContent);
     }
   });
 
   // build 2 card sides
   const splitCardContent = [];
-  splitCardContent[0] = `AAA1${beforeListContent}<ol>`;
+  splitCardContent[0] = `${paragraphContent}`;
+  splitCardContent[0] += "<ol>";
   splitCardContent[0] += listItemGroups[0].join("");
-  splitCardContent[0] += "</ol>AAA2" + listItemGroups[0].length;
+  splitCardContent[0] += "</ol>";
 
   if (listItemGroups[1]) {
-    splitCardContent[1] = `BBB1<ol start="${listItemGroups[0].length + 1}">`; // TODO: Sometimes is incorrect!
+    splitCardContent[1] = `<ol start="${listItemGroups[0].length + 1}">`; // TODO: Sometimes is incorrect!
     splitCardContent[1] += listItemGroups[1].join("");
-    splitCardContent[1] += "</ol>BBB2" + listItemGroups[1].length;
+    splitCardContent[1] += "</ol>";
   }
 
-  // return cards
-  return getCardsForSplitCardContent(splitCardContent, headline, clazz);
+  return getCardsForSplitCardContent(splitCardContent, clazz, number, headline);
 }
 
 function handleMultipleLists(content, card, listCount) {
@@ -767,13 +794,13 @@ function textOnlyLength(content) {
   });
 
   // Solidity 201
-  // await doStuff({
-  //   website: "https://secureum.substack.com/p/solidity-201",
-  //   startingNumber: 102,
-  //   headline: "Secureum Solidity 201",
-  //   cachePathAndFilename: "./secureum_solidity_201.html",
-  //   pdfPathAndFilename: "./secureum_solidity_201.pdf",
-  //   selector:
-  //     "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
-  // });
+  await doStuff({
+    website: "https://secureum.substack.com/p/solidity-201",
+    startingNumber: 102,
+    headline: "Secureum Solidity 201",
+    cachePathAndFilename: "./secureum_solidity_201.html",
+    pdfPathAndFilename: "./secureum_solidity_201.pdf",
+    selector:
+      "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+  });
 })();
