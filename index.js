@@ -10,10 +10,13 @@ const util = require("util");
 var HTMLParser = require("node-html-parser");
 
 // globals
-const log = true;
+const log = false;
 const logHtml = false;
-const meta = false;
+const meta = true;
 const limit = 1000000;
+
+render101 = false;
+render202 = true;
 
 async function doStuff(options) {
   // read options
@@ -93,14 +96,14 @@ function getChunks(hlContent) {
   };
 
   const pushElement = (card, element, tag) => {
-    console.log(`push element with tag: ${tag}`);
+    loggg(`push element with tag: ${tag}`);
     card.push(element);
   };
 
   const saveCard = (card, where, start, lastStart) => {
     // log where card is saved and card was empty
     if (!card.length) {
-      console.log(
+      loggg(
         `-------------------- SAVE CARD IGNORED (where: "${where}", start: ${start}, last start: ${lastStart}) --------------------`
       );
       return;
@@ -110,15 +113,13 @@ function getChunks(hlContent) {
     const tags = card.map((i) => i.content.rawTagName);
     cards.push(card);
     card = [];
-    console.log(
+    loggg(
       `-------------------- SAVE CARD (tags: ${tags}, where: "${where}", start: ${start}, last start: ${lastStart}) --------------------`
     );
   };
 
   var card = []; // create the first card
 
-  console.log(cards);
-  console.log(cards.length);
   hlContent.forEach((hl, index) => {
     // get next highlevel content element
     const nextHlContent = hlContent[index + 1];
@@ -138,7 +139,7 @@ function getChunks(hlContent) {
 
     // handle top level list
     if (hl.rawTagName === "ol") {
-      console.log(
+      loggg(
         `# LIST (card number: ${cardNumber}, last card number: ${lastCardNumber}, children: ${hl.childNodes.length})`
       );
 
@@ -169,7 +170,7 @@ function getChunks(hlContent) {
 
         // do not close card for list items that are no card
         if (!listItemsAreCards) {
-          console.log("li iteration -> list item is no card");
+          loggg("li iteration -> list item is no card");
           lastCardNumber = number;
           return;
         }
@@ -202,7 +203,7 @@ function getChunks(hlContent) {
 
     // handle top level paragraphs
     else if (hl.rawTagName === "p") {
-      console.log(
+      loggg(
         `# PARAGRAPH (card number: ${cardNumber}, last card number: ${lastCardNumber})`
       );
       pushElement(
@@ -262,15 +263,32 @@ async function getSplitCards(chunks, headline) {
     // set card number
     const number = i + 1;
 
-    // handle single list item
-    const singleListItem =
-      chunk.length === 1 && chunk[0].content.rawTagName === "li";
-    if (singleListItem) {
+    // get child nodes of first chunk element
+    const childNodes = chunk[0].content.childNodes;
+
+    // ---------- handle single list item card ----------
+
+    const singleListItemCard =
+      chunk.length === 1 && chunk[0].type === "list-item-card";
+
+    if (singleListItemCard) {
       loggg(`# Handle single list item (chunk number/index: ${i + 1}/${i})`);
-      const childNodes = chunk[0].content.childNodes;
+
+      // console.log(
+      //   "000",
+      //   chunk.map((t) => t.type),
+      //   childNodes.map((t) => {
+      //     if (t.rawTagName === "ol") {
+      //       return (
+      //         t.rawTagName + " -> " + t.childNodes.map((c) => c.rawTagName)
+      //       );
+      //     }
+      //     return t.rawTagName;
+      //   })
+      // );
 
       // handle a single paragraph is in list item
-      if (childNodes.length === 1 && childNodes[0].rawTagName === "p") {
+      if (isExpectedTags(childNodes, ["p"])) {
         loggg(
           `... Handle a single paragraph in list item (chunk number/index: ${
             i + 1
@@ -283,11 +301,7 @@ async function getSplitCards(chunks, headline) {
       }
 
       // handle a single paragraph followed by a single list in list item
-      if (
-        childNodes.length === 2 &&
-        childNodes[0].rawTagName === "p" &&
-        childNodes[1].rawTagName === "ol"
-      ) {
+      if (isExpectedTags(childNodes, ["p", "ol"])) {
         loggg(
           `... Handle a single paragraph followed by a single list in list item (chunk number/index: ${
             i + 1
@@ -308,11 +322,62 @@ async function getSplitCards(chunks, headline) {
         111,
         childNodes.map((t) => t.rawTagName)
       );
-
-      // handle where a paragraph followed by a single list is in lit item
+      continue;
     }
 
-    return splitCards;
+    // -------- handle non single list item card --------
+
+    loggg(`# Handle NOT single list item (chunk number/index: ${i + 1}/${i})`);
+
+    // handle where content begins with single paragraph followed by a list
+    if (isExpectedTags(childNodes, ["p", "ol"])) {
+      console.log(
+        333,
+        chunk.map((c) => c.type)
+      );
+      // handle paragraph and list
+      splitCards = splitCards.concat(
+        await handleParagraphAndOneList(
+          chunk[0].content.childNodes,
+          number,
+          headline
+        )
+      );
+      continue;
+
+      // handle additional content
+
+      console.log(
+        222,
+        i,
+        chunk.map((t) => {
+          if (t.content.rawTagName === "li") {
+            return (
+              t.content.rawTagName +
+              " / " +
+              t.number +
+              " -> " +
+              t.content.childNodes.map((c) => c.rawTagName)
+            );
+          }
+          return t.content.rawTagName;
+        })
+      );
+    }
+  }
+
+  return splitCards;
+
+  function isExpectedTags(nodes, expectedTags) {
+    if (!nodes || !expectedTags) {
+      throw new Error("nodes or expected tags is wrong");
+    }
+    const tags = getTagsFromNodes(nodes);
+    return JSON.stringify(tags) === JSON.stringify(expectedTags);
+  }
+
+  function getTagsFromNodes(nodes) {
+    return nodes.map((t) => t.rawTagName);
   }
 
   // // get list count
@@ -583,6 +648,7 @@ async function getHtmlForSplitCards(splitCards, headline) {
 
               .meta {
                 font-size: 14px;
+                color: red;
               }
 
               h1 {
@@ -642,6 +708,11 @@ async function getHtmlForSplitCards(splitCards, headline) {
 
               ol li::marker {
                 font-weight: bold;
+              }
+
+              .picoFont {
+                font-size: 11px;
+                line-height: 130%;
               }
 
               .nanoFont {
@@ -719,10 +790,17 @@ function getClazzAndSplitLength(content, listCount) {
   // NOTE: Only use content length without HTML tags
   const length = textOnlyLength(content);
 
+  if (length >= 1800) {
+    return {
+      clazz: "picoFont",
+      splitLength: listCount > 0 ? 1650 : 2200,
+    };
+  }
+
   if (length >= 1500) {
     return {
       clazz: "nanoFont",
-      splitLength: listCount > 0 ? 1700 : 2000,
+      splitLength: listCount > 0 ? 1300 : 2000,
     };
   }
 
@@ -736,7 +814,7 @@ function getClazzAndSplitLength(content, listCount) {
   if (length >= 450) {
     return {
       clazz: "tinyFont",
-      splitLength: listCount > 0 ? 650 : 1000,
+      splitLength: listCount > 0 ? 600 : 1000,
     };
   }
 
@@ -783,24 +861,28 @@ function textOnlyLength(content) {
 
 (async () => {
   // Solidity 101
-  await doStuff({
-    website: "https://secureum.substack.com/p/solidity-101",
-    startingNumber: 1,
-    headline: "Secureum Solidity 101",
-    cachePathAndFilename: "./secureum_solidity_101.html",
-    pdfPathAndFilename: "./secureum_solidity_101.pdf",
-    selector:
-      "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
-  });
+  if (render101) {
+    await doStuff({
+      website: "https://secureum.substack.com/p/solidity-101",
+      startingNumber: 1,
+      headline: "Secureum Solidity 101",
+      cachePathAndFilename: "./secureum_solidity_101.html",
+      pdfPathAndFilename: "./secureum_solidity_101.pdf",
+      selector:
+        "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+    });
+  }
 
   // Solidity 201
-  await doStuff({
-    website: "https://secureum.substack.com/p/solidity-201",
-    startingNumber: 102,
-    headline: "Secureum Solidity 201",
-    cachePathAndFilename: "./secureum_solidity_201.html",
-    pdfPathAndFilename: "./secureum_solidity_201.pdf",
-    selector:
-      "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
-  });
+  if (render202) {
+    await doStuff({
+      website: "https://secureum.substack.com/p/solidity-201",
+      startingNumber: 102,
+      headline: "Secureum Solidity 201",
+      cachePathAndFilename: "./secureum_solidity_201.html",
+      pdfPathAndFilename: "./secureum_solidity_201.pdf",
+      selector:
+        "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+    });
+  }
 })();
