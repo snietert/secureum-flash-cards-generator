@@ -12,11 +12,12 @@ var HTMLParser = require("node-html-parser");
 // globals
 const log = false;
 const logHtml = false;
-const meta = true;
+const meta = false;
 const limit = 1000000;
 
-render101 = false;
-render202 = true;
+renderSolidity101 = true;
+renderSolidity202 = true;
+renderAuditFindings101 = true;
 
 async function doStuff(options) {
   // read options
@@ -807,7 +808,7 @@ function getClazzAndSplitLength(content, listCount) {
   if (length >= 1000) {
     return {
       clazz: "microFont",
-      splitLength: listCount > 0 ? 855 : 1000,
+      splitLength: listCount > 0 ? 700 : 1000,
     };
   }
 
@@ -861,7 +862,7 @@ function textOnlyLength(content) {
 
 (async () => {
   // Solidity 101
-  if (render101) {
+  if (renderSolidity101) {
     await doStuff({
       website: "https://secureum.substack.com/p/solidity-101",
       startingNumber: 1,
@@ -874,13 +875,26 @@ function textOnlyLength(content) {
   }
 
   // Solidity 201
-  if (render202) {
+  if (renderSolidity202) {
     await doStuff({
       website: "https://secureum.substack.com/p/solidity-201",
       startingNumber: 102,
       headline: "Secureum Solidity 201",
       cachePathAndFilename: "./secureum_solidity_201.html",
       pdfPathAndFilename: "./secureum_solidity_201.pdf",
+      selector:
+        "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+    });
+  }
+
+  // Audit Findings 101
+  if (renderAuditFindings101) {
+    await doStuff({
+      website: "https://secureum.substack.com/p/audit-findings-101",
+      startingNumber: 101,
+      headline: "Secureum Audit Findings 101",
+      cachePathAndFilename: "./secureum_audit_findings_101.html",
+      pdfPathAndFilename: "./secureum_audit_findings_101.pdf",
       selector:
         "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
     });
