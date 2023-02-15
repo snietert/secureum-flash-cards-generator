@@ -18,6 +18,8 @@ const limit = 1000000;
 renderSolidity101 = true;
 renderSolidity202 = true;
 renderAuditFindings101 = true;
+renderAuditFindings201 = true;
+renderTechniquesAndTools101 = true;
 
 async function doStuff(options) {
   // read options
@@ -891,10 +893,36 @@ function textOnlyLength(content) {
   if (renderAuditFindings101) {
     await doStuff({
       website: "https://secureum.substack.com/p/audit-findings-101",
-      startingNumber: 101,
+      startingNumber: 1,
       headline: "Secureum Audit Findings 101",
       cachePathAndFilename: "./secureum_audit_findings_101.html",
       pdfPathAndFilename: "./secureum_audit_findings_101.pdf",
+      selector:
+        "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+    });
+  }
+
+  // Audit Findings 201
+  if (renderAuditFindings201) {
+    await doStuff({
+      website: "https://secureum.substack.com/p/audit-findings-201",
+      startingNumber: 102,
+      headline: "Secureum Audit Findings 201",
+      cachePathAndFilename: "./secureum_audit_findings_201.html",
+      pdfPathAndFilename: "./secureum_audit_findings_201.pdf",
+      selector:
+        "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+    });
+  }
+
+  // Audit Techniques & Tools 101
+  if (renderTechniquesAndTools101) {
+    await doStuff({
+      website: "https://secureum.substack.com/p/audit-techniques-and-tools-101",
+      startingNumber: 1,
+      headline: "Secureum Audit Techniques & Tools 101",
+      cachePathAndFilename: "./secureum_audit_techniques_and_tools_101.html",
+      pdfPathAndFilename: "./secureum_audit_techniques_and_tools_101.pdf",
       selector:
         "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
     });
