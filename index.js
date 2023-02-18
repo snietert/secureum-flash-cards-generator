@@ -13,22 +13,20 @@ var HTMLParser = require("node-html-parser");
 const log = false;
 const logHtml = false;
 const meta = false;
-const limit = 1000000;
 
-renderSolidity101 = true;
+// document selectors
+renderSolidity101 = false;
 renderSolidity202 = true;
-renderAuditFindings101 = true;
-renderAuditFindings201 = true;
-renderTechniquesAndTools101 = true;
+renderAuditFindings101 = false;
+renderAuditFindings201 = false;
+renderTechniquesAndTools101 = false;
 
 async function doStuff(options) {
-  // read options
   const {
     website,
     headline,
     cachePathAndFilename,
     pdfPathAndFilename,
-    startingNumber,
     selector,
   } = options;
 
@@ -43,7 +41,6 @@ async function doStuff(options) {
   var highlevel = await fetchHighLevelContentSeparation(html, selector);
 
   // split highlevel content into content and references
-  // TODO handle for list only pages (e.g. "Solidity 101")
   const splitPosition = highlevel.findIndex((h) => h.rawTagName === "div");
   const hlContent =
     splitPosition !== -1 ? highlevel.slice(0, splitPosition) : highlevel;
@@ -55,7 +52,6 @@ async function doStuff(options) {
 
   // get cards for chunks
   const splitCards = await getSplitCards(chunks, headline);
-  // console.log(111, splitCards);
 
   // generate PDF from cards content
   await generatePdf(splitCards, pdfPathAndFilename);
@@ -93,6 +89,7 @@ function getChunks(hlContent) {
   // handle top level elements
   var lastCardNumber = null;
 
+  // TODO move functions out
   const getStartAttribute = (element) => {
     var start = element.rawAttrs.split('"')[1];
     return parseInt(start) || null;
@@ -146,62 +143,73 @@ function getChunks(hlContent) {
         `# LIST (card number: ${cardNumber}, last card number: ${lastCardNumber}, children: ${hl.childNodes.length})`
       );
 
-      // check if list items should be treated as single cards
+      // ----- check if list items should be treated as single cards -----
       const listItemsAreCards =
         getStartAttribute(hl) !== null || (index === 0 && !nextHlContent);
 
-      // iterate all list items
-      const listItems = hl.childNodes;
+      // -- handle list where list items are cards ---
 
-      listItems.forEach((li, index) => {
-        const number = cardNumber + (listItemsAreCards ? index : 0); // TODO
-        loggg(`... list item (index: ${index}, number: ${number})`);
+      if (listItemsAreCards) {
+        // iterate all list items
+        const listItems = hl.childNodes;
 
-        // get next list item
-        const nextListItem = listItems[index + 1];
+        listItems.forEach((li, index) => {
+          const number = cardNumber + index;
+          loggg(`... list item (index: ${index}, number: ${number})`);
 
-        // push the list item onto the card
-        pushElement(
-          card,
-          {
-            type: listItemsAreCards ? "list-item-card" : "list-item",
-            content: li,
-            number,
-          },
-          "li"
-        );
+          // get next list item
+          const nextListItem = listItems[index + 1];
 
-        // do not close card for list items that are no card
-        if (!listItemsAreCards) {
-          loggg("li iteration -> list item is no card");
+          // push the list item onto the card
+          pushElement(
+            card,
+            {
+              type: "list-item-card",
+              content: li,
+              number,
+            },
+            "li"
+          );
+
+          // close card for list items that are cards
+          if (nextListItem) {
+            // close card if here is a next list item
+            loggg("li iteration -> list item is card | not last list item");
+            saveCard(card, "li iteration", cardNumber, lastCardNumber);
+            card = [];
+          } else if (!contentFollowing) {
+            // close card if there is no next list item and no content following
+            loggg(
+              "li iteration -> list item is card | last list item + no content following"
+            );
+            saveCard(card, "li iteration", cardNumber, lastCardNumber);
+            card = [];
+          } else if (contentFollowing) {
+            // do not close card if there is no next list item and content following
+            loggg(
+              "li iteration -> list item is card | last list item + content following"
+            );
+          } else {
+            throw new Error("unhandled condition!");
+          }
+
           lastCardNumber = number;
-          return;
-        }
+        });
 
-        // close card for list items that are cards
-        if (nextListItem) {
-          // close card if here is a next list item
-          loggg("li iteration -> list item is card | not last list item");
-          saveCard(card, "li iteration", cardNumber, lastCardNumber);
-          card = [];
-        } else if (!contentFollowing) {
-          // close card if there is no next list item and no content following
-          loggg(
-            "li iteration -> list item is card | last list item + no content following"
-          );
-          saveCard(card, "li iteration", cardNumber, lastCardNumber);
-          card = [];
-        } else if (contentFollowing) {
-          // do not close card if there is no next list item and content following
-          loggg(
-            "li iteration -> list item is card | last list item + content following"
-          );
-        } else {
-          throw new Error("unhandled condition!");
-        }
+        return;
+      }
 
-        lastCardNumber = number;
-      });
+      // -- handle list where list items are no cards (additional content e.g. to last card) ---
+
+      pushElement(
+        card,
+        {
+          type: "list",
+          content: hl,
+          number: lastCardNumber,
+        },
+        "ol"
+      );
     }
 
     // handle top level paragraphs
@@ -266,149 +274,98 @@ async function getSplitCards(chunks, headline) {
     // set card number
     const number = i + 1;
 
+    // check that chunk always begins with list-item-card
+    if (chunk[0].type !== "list-item-card") {
+      throw new Error("first chunk element should be of type list-item-card");
+    }
+
     // get child nodes of first chunk element
-    const childNodes = chunk[0].content.childNodes;
+    const chunkElementOneChildNodes = chunk[0].content.childNodes;
 
-    // ---------- handle single list item card ----------
+    // handle patterns of the beginning of a chunk
+    const isPandOl = isExpectedTags(chunkElementOneChildNodes, ["p", "ol"]); // TODO name better
+    const isP = isExpectedTags(chunkElementOneChildNodes, ["p"]);
 
-    const singleListItemCard =
-      chunk.length === 1 && chunk[0].type === "list-item-card";
-
-    if (singleListItemCard) {
-      loggg(`# Handle single list item (chunk number/index: ${i + 1}/${i})`);
-
-      // console.log(
-      //   "000",
-      //   chunk.map((t) => t.type),
-      //   childNodes.map((t) => {
-      //     if (t.rawTagName === "ol") {
-      //       return (
-      //         t.rawTagName + " -> " + t.childNodes.map((c) => c.rawTagName)
-      //       );
-      //     }
-      //     return t.rawTagName;
-      //   })
-      // );
-
-      // handle a single paragraph is in list item
-      if (isExpectedTags(childNodes, ["p"])) {
-        loggg(
-          `... Handle a single paragraph in list item (chunk number/index: ${
-            i + 1
-          }/${i})`
-        );
-        splitCards = splitCards.concat(
-          handleSingleParagraph(childNodes[0], number, headline)
-        );
-        continue;
-      }
-
-      // handle a single paragraph followed by a single list in list item
-      if (isExpectedTags(childNodes, ["p", "ol"])) {
-        loggg(
-          `... Handle a single paragraph followed by a single list in list item (chunk number/index: ${
-            i + 1
-          }/${i})`
-        );
-
-        splitCards = splitCards.concat(
-          await handleParagraphAndOneList(
-            chunk[0].content.childNodes,
-            number,
-            headline
-          )
-        );
-        continue;
-      }
-
-      console.log(
-        111,
-        childNodes.map((t) => t.rawTagName)
-      );
-      continue;
-    }
-
-    // -------- handle non single list item card --------
-
-    loggg(`# Handle NOT single list item (chunk number/index: ${i + 1}/${i})`);
-
-    // handle where content begins with single paragraph followed by a list
-    if (isExpectedTags(childNodes, ["p", "ol"])) {
-      console.log(
-        333,
-        chunk.map((c) => c.type)
-      );
-      // handle paragraph and list
+    if (isPandOl) {
       splitCards = splitCards.concat(
-        await handleParagraphAndOneList(
-          chunk[0].content.childNodes,
-          number,
-          headline
-        )
+        handleParagraphAndOneList(chunkElementOneChildNodes, number, headline)
       );
-      continue;
-
-      // handle additional content
-
-      console.log(
-        222,
-        i,
-        chunk.map((t) => {
-          if (t.content.rawTagName === "li") {
-            return (
-              t.content.rawTagName +
-              " / " +
-              t.number +
-              " -> " +
-              t.content.childNodes.map((c) => c.rawTagName)
-            );
-          }
-          return t.content.rawTagName;
-        })
+    } else if (isP) {
+      splitCards = splitCards.concat(
+        handleParagraphs(chunkElementOneChildNodes, number, headline)
       );
+    }
+
+    // handle chunk content after initial element
+    const afterListItemCard = chunk.slice(1);
+
+    if (afterListItemCard.length) {
+      const afterListItemcardElements = afterListItemCard.map((c) => c.content);
+      if (isExpectedTags(afterListItemcardElements, ["p", "ol"])) {
+        checkParagraphPlusListStructure(afterListItemCard); // TODO maybe delete!
+        splitCards = splitCards.concat(
+          handleParagraphAndOneList(afterListItemcardElements, number, headline)
+        );
+      } else if (isOnlyParagraphs(afterListItemCard)) {
+        splitCards = splitCards.concat(
+          handleParagraphs(afterListItemcardElements, number, headline)
+        );
+      }
     }
   }
 
-  return splitCards;
-
-  function isExpectedTags(nodes, expectedTags) {
-    if (!nodes || !expectedTags) {
-      throw new Error("nodes or expected tags is wrong");
-    }
-    const tags = getTagsFromNodes(nodes);
-    return JSON.stringify(tags) === JSON.stringify(expectedTags);
-  }
-
-  function getTagsFromNodes(nodes) {
-    return nodes.map((t) => t.rawTagName);
-  }
-
-  // // get list count
-  // const listCount = chunk.elements.filter((e) => e.tag === "ol").length;
-  // loggg(`Chunk ${i} has ${listCount} lists`);
-
-  // if (listCount === 1 && i === 2) {
-  //   splitCards = splitCards.concat(await handleParagraphAndOneList(chunk, headline));
-  // }
-
-  // prepare card content
-  // var content = await prepareContent(cards[i].content.toString());
-
-  // split card content split to multiple cards if required
-  // if (listCount === 0) {
-  //   splitCards = splitCards.concat(handleNoLists(chunk, cards[i]));
-  // } else if (listCount === 1) {
-
-  // } else {
-  //   splitCards = splitCards.concat(
-  //     handleMultipleLists(chunk, cards[i], listCount)
-  //   );
-  // }
   return splitCards;
 }
 
-function handleSingleParagraph(node, number, headline) {
-  const content = node.toString();
+function isExpectedTags(nodes, expectedTags) {
+  if (!nodes || !expectedTags) {
+    throw new Error("nodes or expected tags is wrong");
+  }
+  const tags = getTagsFromNodes(nodes);
+  return JSON.stringify(tags) === JSON.stringify(expectedTags);
+}
+
+function getTagsFromNodes(nodes) {
+  return nodes.map((t) => t.rawTagName);
+}
+
+function checkParagraphPlusListStructure(items) {
+  items.forEach((item, index) => {
+    if (items.length !== 2) {
+      throw new Error("2 items were expected");
+    }
+
+    if (index === 0 && item.type !== "paragraph") {
+      throw new Error("paragraph type was expected, got ", item.type);
+    } else if (index == 1 && item.type !== "list") {
+      throw new Error("list type was expected, got  ", item.type);
+    }
+
+    if (item.type === "list") {
+      item.content.childNodes.forEach((li) => {
+        li.childNodes.forEach((c) => {
+          if (c.rawTagName !== "p") {
+            throw new Error("paragraph tag was expected, got " + c.rawTagName);
+          }
+        });
+      });
+    }
+  });
+}
+
+function isOnlyParagraphs(items) {
+  items.forEach((item) => {
+    if (item.type !== "paragraph") {
+      return false;
+    }
+  });
+  return true;
+}
+
+function handleParagraphs(nodes, number, headline, xxx) {
+  var content = nodes.map((n) => n.toString()).join("");
+  content = striptags(content, ["i", "em", "strong", "b", "span"]);
+
   const { splitLength, clazz } = getClazzAndSplitLength(content, 0);
 
   const splitCardContent = [];
@@ -431,7 +388,7 @@ function handleSingleParagraph(node, number, headline) {
   return getCardsForSplitCardContent(splitCardContent, clazz, number, headline);
 }
 
-async function handleParagraphAndOneList(nodes, number, headline) {
+function handleParagraphAndOneList(nodes, number, headline) {
   const paragraph = nodes[0];
   const list = nodes[1];
 
@@ -485,14 +442,6 @@ async function handleParagraphAndOneList(nodes, number, headline) {
   }
 
   return getCardsForSplitCardContent(splitCardContent, clazz, number, headline);
-}
-
-function handleMultipleLists(content, card, listCount) {
-  const { splitLength, clazz } = getClazzAndSplitLength(content, listCount);
-  const splitCardContent = ["Card has multiple lists (open issue)!"];
-
-  // return cards
-  return getCardsForSplitCardContent(splitCardContent, card, clazz);
 }
 
 function getCardsForSplitCardContent(
