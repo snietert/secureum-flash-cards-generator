@@ -7,7 +7,7 @@ const { generatePdf } = require("./pdf");
 
 // document selectors
 renderSolidity101 = false;
-renderSolidity202 = true;
+renderSolidity201 = true;
 renderAuditFindings101 = false;
 renderAuditFindings201 = false;
 renderTechniquesAndTools101 = false;
@@ -63,7 +63,7 @@ async function doStuff(options) {
   }
 
   // Solidity 201
-  if (renderSolidity202) {
+  if (renderSolidity201) {
     await doStuff({
       website: "https://secureum.substack.com/p/solidity-201",
       startingNumber: 102,

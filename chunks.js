@@ -19,7 +19,7 @@ function getChunks(hlContent) {
 
   const saveCard = (card, where, start, lastStart) => {
     // log where card is saved and card was empty
-    if (!card.length) {
+    if (!card || !card.length) {
       loggg(
         `-------------------- SAVE CARD IGNORED (where: "${where}", start: ${start}, last start: ${lastStart}) --------------------`
       );
@@ -35,21 +35,20 @@ function getChunks(hlContent) {
     );
   };
 
-  var card = []; // create the first card
+  var card;
 
   hlContent.forEach((hl, index) => {
     // get next highlevel content element
     const nextHlContent = hlContent[index + 1];
-    var contentFollowing = nextHlContent && !getStartAttribute(nextHlContent);
 
     // try to detect the start from the start attribute
     var cardNumber = getStartAttribute(hl) || lastCardNumber;
-    if (cardNumber === null && hlContent.length === 1) {
+    if (cardNumber === null) {
       cardNumber = 1;
     }
 
-    // check if a new card needs to be created
-    if (lastCardNumber && cardNumber !== lastCardNumber) {
+    // create new card if indicated by card number change
+    if (cardNumber !== lastCardNumber) {
       saveCard(card, "hl iteration", cardNumber, lastCardNumber);
       card = [];
     }
@@ -60,22 +59,28 @@ function getChunks(hlContent) {
         `# LIST (card number: ${cardNumber}, last card number: ${lastCardNumber}, children: ${hl.childNodes.length})`
       );
 
-      // ----- check if list items should be treated as single cards -----
-      const listItemsAreCards =
-        getStartAttribute(hl) !== null || (index === 0 && !nextHlContent);
+      // handle numbered lists
+      const isListWithStartNumber = getStartAttribute(hl) !== null;
+      const contentIsOneListOnly = index === 0 && !nextHlContent;
+      var secondListHasStartNumber = false;
 
-      // -- handle list where list items are cards ---
+      if (!contentIsOneListOnly && index === 0) {
+        const secondList = hlContent
+          .slice(1)
+          .find((c) => c.rawTagName === "ol");
+        secondListHasStartNumber = !!getStartAttribute(secondList);
+      }
 
-      if (listItemsAreCards) {
-        // iterate all list items
+      if (
+        isListWithStartNumber ||
+        contentIsOneListOnly ||
+        secondListHasStartNumber
+      ) {
         const listItems = hl.childNodes;
 
         listItems.forEach((li, index) => {
           const number = cardNumber + index;
           loggg(`... list item (index: ${index}, number: ${number})`);
-
-          // get next list item
-          const nextListItem = listItems[index + 1];
 
           // push the list item onto the card
           pushElement(
@@ -88,9 +93,14 @@ function getChunks(hlContent) {
             "li"
           );
 
+          // get next list item
+          const nextListItem = listItems[index + 1];
+          var contentFollowing =
+            nextHlContent && !getStartAttribute(nextHlContent);
+
           // close card for list items that are cards
           if (nextListItem) {
-            // close card if here is a next list item
+            // close card if there is a next list item
             loggg("li iteration -> list item is card | not last list item");
             saveCard(card, "li iteration", cardNumber, lastCardNumber);
             card = [];
@@ -117,7 +127,6 @@ function getChunks(hlContent) {
       }
 
       // -- handle list where list items are no cards (additional content e.g. to last card) ---
-
       pushElement(
         card,
         {

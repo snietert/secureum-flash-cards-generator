@@ -1,4 +1,5 @@
-const { textOnlyLength, removeParagraphTags } = require("./tools");
+const escape = require("escape-html");
+const { textOnlyLength, removeParagraphTags, loggg } = require("./tools");
 
 async function getSplitCards(chunks, headline) {
   var splitCards = [];
@@ -7,9 +8,6 @@ async function getSplitCards(chunks, headline) {
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
 
-    // set card number
-    const number = i + 1;
-
     // check that chunk always begins with list-item-card
     if (chunk[0].type !== "list-item-card") {
       throw new Error("first chunk element should be of type list-item-card");
@@ -17,6 +15,7 @@ async function getSplitCards(chunks, headline) {
 
     // get child nodes of first chunk element
     const chunkElementOneChildNodes = chunk[0].content.childNodes;
+    var number = chunk[0].number;
 
     // handle patterns of the beginning of a chunk
     const isPandOl = isExpectedTags(chunkElementOneChildNodes, ["p", "ol"]); // TODO name better
@@ -24,11 +23,11 @@ async function getSplitCards(chunks, headline) {
 
     if (isPandOl) {
       splitCards = splitCards.concat(
-        handleParagraphAndOneList(chunkElementOneChildNodes, number, headline)
+        handleParagraphAndOneList(chunkElementOneChildNodes, headline, number)
       );
     } else if (isP) {
       splitCards = splitCards.concat(
-        handleParagraphs(chunkElementOneChildNodes, number, headline)
+        handleParagraphs(chunkElementOneChildNodes, headline, number)
       );
     }
 
@@ -36,15 +35,16 @@ async function getSplitCards(chunks, headline) {
     const afterListItemCard = chunk.slice(1);
 
     if (afterListItemCard.length) {
+      number += "+";
       const afterListItemcardElements = afterListItemCard.map((c) => c.content);
       if (isExpectedTags(afterListItemcardElements, ["p", "ol"])) {
         checkParagraphPlusListStructure(afterListItemCard); // TODO maybe delete!
         splitCards = splitCards.concat(
-          handleParagraphAndOneList(afterListItemcardElements, number, headline)
+          handleParagraphAndOneList(afterListItemcardElements, headline, number)
         );
       } else if (isOnlyParagraphs(afterListItemCard)) {
         splitCards = splitCards.concat(
-          handleParagraphs(afterListItemcardElements, number, headline)
+          handleParagraphs(afterListItemcardElements, headline, number)
         );
       }
     }
@@ -98,7 +98,7 @@ function isOnlyParagraphs(items) {
   return true;
 }
 
-function handleParagraphs(nodes, number, headline, xxx) {
+function handleParagraphs(nodes, headline, number) {
   var content = nodes.map((n) => n.toString()).join("");
   content = removeParagraphTags(content);
 
@@ -124,7 +124,7 @@ function handleParagraphs(nodes, number, headline, xxx) {
   return getCardsForSplitCardContent(splitCardContent, clazz, number, headline);
 }
 
-function handleParagraphAndOneList(nodes, number, headline) {
+function handleParagraphAndOneList(nodes, headline, number) {
   const paragraph = nodes[0];
   const list = nodes[1];
 
@@ -242,7 +242,7 @@ function getCardsForSplitCardContent(
   return splitCardContent.map((spc, index) => {
     return {
       headline,
-      counter: number,
+      number,
       xOfNX: splitCardContent.length > 1 ? index + 1 : null,
       xOfNN: splitCardContent.length > 1 ? splitCardContent.length : null,
       contentLength: textOnlyLength(spc),

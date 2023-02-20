@@ -24,7 +24,7 @@ async function getHtmlForSplitCards(splitCards, headline) {
     // header
     var headerHtml = '<div class="header sansserif">';
     headerHtml += `<h1>${card.headline}</h1>`;
-    headerHtml += `<span class="counter">${card.counter}`;
+    headerHtml += `<span class="number">${card.number}`;
     headerHtml += card.xOfNX !== null ? ` (${card.xOfNX}/${card.xOfNN})` : "";
     headerHtml += "</span>";
     headerHtml += "</div>";
@@ -97,16 +97,16 @@ async function getHtmlForSplitCards(splitCards, headline) {
   
                 h1 {
                   font-size: 24px;
-                  flex: 0.8;
+                  flex: 0.7;
                   margin: 0;
                   padding: 0;
                 }
   
-                .counter {
+                .number {
                   font-weight: bold;
                   text-align: right;
                   font-size: 24px;
-                  flex: 0.2;
+                  flex: 0.3;
                 }
   
                 body {
