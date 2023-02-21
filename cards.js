@@ -3,12 +3,7 @@ const qrCode = require("qrcode");
 const sanitizeHtml = require("sanitize-html");
 const escape = require("escape-html");
 
-const {
-  textOnlyLength,
-  cleanParagraphTags,
-  loggg,
-  textOnly,
-} = require("./tools");
+const { textOnlyLength, cleanParagraphTags } = require("./tools");
 
 async function getSplitCards(chunks, headline) {
   var splitCards = [];
@@ -117,7 +112,14 @@ function handleParagraphs(nodes, headline, number) {
   var content = nodes.map((n) => n.toString()).join("");
   content = cleanParagraphTags(content);
 
-  const { splitLength, clazz } = getClazzAndSplitLength(content, 0);
+  // NOTE: Links count equals barcodes count
+  const barcodesCount = getLinks(content).length;
+
+  const { splitLength, clazz } = getClazzAndSplitLength(
+    content,
+    0,
+    barcodesCount
+  );
 
   const splitCardContent = [];
   const words = content.split(/\s+/);
@@ -151,9 +153,18 @@ function handleParagraphAndOneList(nodes, headline, number) {
     throw new Error("Chunk for paragraph with single list has wrong stucture!");
   }
 
-  // get the clazz based on full content length
+  // get the full content
   const fullContent = nodes.toString();
-  const { splitLength, clazz } = getClazzAndSplitLength(fullContent, 1);
+
+  // NOTE: Links count equals barcodes count
+  const barcodesCount = getLinks(fullContent).length;
+
+  // get the clazz based on full content length
+  const { splitLength, clazz } = getClazzAndSplitLength(
+    fullContent,
+    1,
+    barcodesCount
+  );
 
   // get the content of the paragraph
   const paragraphContent = paragraph.toString();
@@ -260,7 +271,7 @@ function enhanceCardContent(content, xOfN) {
 }
 
 async function getBarcodes(content) {
-  const links = extractUrls(content);
+  const links = getLinks(content);
   const barcodes = [];
 
   if (links) {
@@ -276,6 +287,10 @@ async function getBarcodes(content) {
   }
 
   return barcodes;
+}
+
+function getLinks(content) {
+  return extractUrls(content) || [];
 }
 
 /////////////////////////////// SPLIT CARDS ///////////////////////////////
@@ -300,49 +315,57 @@ function getCardsForSplitCardContent(
   });
 }
 
-function getClazzAndSplitLength(content, listCount) {
+function getClazzAndSplitLength(content, listCount, barcodesCount) {
   // NOTE: Only use content length without HTML tags
   const length = textOnlyLength(content);
+  var clazzAndLength = null;
 
   if (length >= 1800) {
-    return {
+    clazzAndLength = {
       clazz: "picoFont",
       splitLength: listCount > 0 ? 1650 : 2200,
+      barcodesFactor: 0.1,
     };
-  }
-
-  if (length >= 1500) {
-    return {
+  } else if (length >= 1500) {
+    clazzAndLength = {
       clazz: "nanoFont",
       splitLength: listCount > 0 ? 1300 : 2000,
+      barcodesFactor: 0.1,
     };
-  }
-
-  if (length >= 1000) {
-    return {
+  } else if (length >= 1000) {
+    clazzAndLength = {
       clazz: "microFont",
       splitLength: listCount > 0 ? 700 : 1000,
+      barcodesFactor: 0.1,
     };
-  }
-
-  if (length >= 450) {
-    return {
+  } else if (length >= 450) {
+    clazzAndLength = {
       clazz: "tinyFont",
       splitLength: listCount > 0 ? 600 : 1000,
+      barcodesFactor: 0.05,
     };
-  }
-
-  if (length >= 300) {
-    return {
+  } else if (length >= 300) {
+    clazzAndLength = {
       clazz: "mediumFont",
       splitLength: listCount > 0 ? 350 : 550,
+      barcodesFactor: 0.05,
+    };
+  } else {
+    clazzAndLength = {
+      clazz: "standardFont",
+      splitLength: listCount > 0 ? 250 : 400,
+      barcodesFactor: 0.025,
     };
   }
 
-  return {
-    clazz: "standardFont",
-    splitLength: listCount > 0 ? 250 : 400,
-  };
+  // handle barcodes
+  if (barcodesCount) {
+    clazzAndLength.splitLength = Math.floor(
+      clazzAndLength.splitLength * (1 - clazzAndLength.barcodesFactor)
+    );
+  }
+
+  return clazzAndLength;
 }
 
 module.exports = { getSplitCards };

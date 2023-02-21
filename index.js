@@ -7,10 +7,10 @@ const { generatePdf } = require("./pdf");
 
 // document selectors
 renderSolidity101 = true;
-renderSolidity201 = false;
-renderAuditFindings101 = false;
-renderAuditFindings201 = false;
-renderTechniquesAndTools101 = false;
+renderSolidity201 = true;
+renderAuditFindings101 = true;
+renderAuditFindings201 = true;
+renderTechniquesAndTools101 = true;
 
 async function doStuff(options) {
   const {

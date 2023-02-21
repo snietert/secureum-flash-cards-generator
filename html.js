@@ -18,7 +18,16 @@ async function getHtmlForSplitCards(splitCards, headline) {
 
     // header
     var headerHtml = '<div class="header sansserif">';
-    headerHtml += `<h1>${card.headline}</h1>`;
+    headerHtml += `<h1>${
+      card.headline.length > 30
+        ? card.headline.substring(0, 20) +
+          "…" +
+          card.headline.substring(
+            card.headline.length - 10,
+            card.headline.length
+          )
+        : card.headline
+    }</h1>`;
     headerHtml += `<span class="number">${card.number}`;
     headerHtml += card.xOfNX !== null ? ` (${card.xOfNX}/${card.xOfNN})` : "";
     headerHtml += "</span>";
@@ -92,7 +101,7 @@ async function getHtmlForSplitCards(splitCards, headline) {
   
                 h1 {
                   font-size: 24px;
-                  flex: 0.7;
+                  flex: 0.8;
                   margin: 0;
                   padding: 0;
                 }
@@ -101,7 +110,7 @@ async function getHtmlForSplitCards(splitCards, headline) {
                   font-weight: bold;
                   text-align: right;
                   font-size: 24px;
-                  flex: 0.3;
+                  flex: 0.2;
                 }
   
                 body {
