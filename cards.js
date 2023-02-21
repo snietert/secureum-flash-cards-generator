@@ -1,5 +1,14 @@
+const extractUrls = require("extract-urls");
+const qrCode = require("qrcode");
+const sanitizeHtml = require("sanitize-html");
 const escape = require("escape-html");
-const { textOnlyLength, removeParagraphTags, loggg } = require("./tools");
+
+const {
+  textOnlyLength,
+  cleanParagraphTags,
+  loggg,
+  textOnly,
+} = require("./tools");
 
 async function getSplitCards(chunks, headline) {
   var splitCards = [];
@@ -48,6 +57,12 @@ async function getSplitCards(chunks, headline) {
         );
       }
     }
+  }
+
+  // clean and enhance cards
+  for (card of splitCards) {
+    await addBarcodes(card);
+    await prepareContent(card);
   }
 
   return splitCards;
@@ -100,7 +115,7 @@ function isOnlyParagraphs(items) {
 
 function handleParagraphs(nodes, headline, number) {
   var content = nodes.map((n) => n.toString()).join("");
-  content = removeParagraphTags(content);
+  content = cleanParagraphTags(content);
 
   const { splitLength, clazz } = getClazzAndSplitLength(content, 0);
 
@@ -182,36 +197,35 @@ function handleParagraphAndOneList(nodes, headline, number) {
 
 ////////////////////////// CLEAN / ENHANCE CARDS //////////////////////////
 
-async function prepareContent(content) {
-  // get barcodes before removing links
-  const barcodes = await getBarcodes(content);
+async function addBarcodes(card) {
+  card.barcodes = await getBarcodes(card.content);
+}
+
+function prepareContent(card) {
+  var content = card.content;
 
   // clean card content
   content = cleanUpcardContent(content);
 
   // enhance card content
-  content = enhanceCardContent(content);
+  content = enhanceCardContent(content, card.xOfNX);
 
   // split very long lines that would push beyond card with
   content = content.replace("encodeWithSignature(", "encodeWithSignature( ");
   content = content.replace("encodeWithSelector(", "encodeWithSelector( ");
 
-  return content;
+  card.content = content;
+
+  return card;
 }
 
 function cleanUpcardContent(content) {
-  // remove leading and trailing li
-  if (content.startsWith("<li>")) {
-    content = content.substring(4);
-    content = content.slice(0, content.length - 6);
-  }
-
   // remove all unallowed tags and link text
-  const allowedTags = ["ol", "ul", "li", "p", "em", "i"];
-  content = sanitizeHtml(content, { allowedTags });
+  // const allowedTags = ["ol", "ul", "li", "p", "em", "i"];
+  // content = sanitizeHtml(content, { allowedTags });
   content = content.replace("(See here)", "");
 
-  // TODO comment
+  // add whitespaces to make long expressions break (would overflow layout otherwise)
   content = content.replace("encodeWithSignature(", "encodeWithSignature( ");
   content = content.replace("encodeWithSelector(", "encodeWithSelector( ");
 
@@ -219,16 +233,49 @@ function cleanUpcardContent(content) {
   return content.trim();
 }
 
-function enhanceCardContent(content) {
-  // add highlight to beginning of content
-  // TODO: later!
-  // const firstColon = content.indexOf(":");
-  // if (firstColon !== -1 && firstColon < 100) {
-  //   var strongContent = "<p><span><strong>" + content.slice(9, firstColon);
-  //   strongContent += "</strong>" + content.slice(firstColon, content.length);
-  //   content = strongContent;
-  // }
+function enhanceCardContent(content, xOfN) {
+  // add highlight to beginning of content on first card page
+  if ([null, 1].includes(xOfN)) {
+    const colonPosition = content.indexOf(":");
+    const isHeadline = colonPosition !== -1 && colonPosition < 150; // NOTE: Heuristic to estimate if it is a headline
+    if (colonPosition && isHeadline) {
+      const emPosition = content.indexOf("<em>");
+      const emContained = emPosition !== -1 && emPosition < colonPosition;
+      if (emContained) {
+        // if em is contained
+        content = content.replace(
+          /(\S*<em>)((?:(?!<\/em>).)*)(.*)/gm,
+          "$1<strong>$2</strong>$3"
+        );
+      } else {
+        // if no em contained
+        content = content.replace(
+          /(\S+>)([^<:]+:)(.*)/gm,
+          "$1<strong>$2</strong>$3"
+        );
+      }
+    }
+  }
   return content;
+}
+
+async function getBarcodes(content) {
+  const links = extractUrls(content);
+  const barcodes = [];
+
+  if (links) {
+    for (const link of links) {
+      barcodes.push(
+        await qrCode.toString(link, {
+          type: "svg",
+          width: 40,
+          margin: 0,
+        })
+      );
+    }
+  }
+
+  return barcodes;
 }
 
 /////////////////////////////// SPLIT CARDS ///////////////////////////////
@@ -247,7 +294,7 @@ function getCardsForSplitCardContent(
       xOfNN: splitCardContent.length > 1 ? splitCardContent.length : null,
       contentLength: textOnlyLength(spc),
       clazz,
-      barcodes: [], //index === 1 ? barcodes : [], TODO
+      barcodes: [],
       content: spc,
     };
   });

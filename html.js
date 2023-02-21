@@ -1,8 +1,3 @@
-const extractUrls = require("extract-urls");
-const qrCode = require("qrcode");
-const sanitizeHtml = require("sanitize-html");
-const escape = require("escape-html");
-
 // TODO make env vars
 const logHtml = false;
 const meta = false;
@@ -209,25 +204,6 @@ async function getHtmlForSplitCards(splitCards, headline) {
   }
 
   return html;
-}
-
-async function getBarcodes(content) {
-  const links = extractUrls(content);
-  const barcodes = [];
-
-  if (links) {
-    for (const link of links) {
-      barcodes.push(
-        await qrCode.toString(link, {
-          type: "svg",
-          width: 40,
-          margin: 0,
-        })
-      );
-    }
-  }
-
-  return barcodes;
 }
 
 module.exports = { getHtmlForSplitCards };

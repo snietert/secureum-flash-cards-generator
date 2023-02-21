@@ -18,8 +18,8 @@ function textOnlyLength(content) {
   return textOnly(content).length;
 }
 
-function removeParagraphTags(content) {
-  return striptags(content, ["i", "em", "strong", "b", "span"]);
+function cleanParagraphTags(content) {
+  return striptags(content, ["p", "i", "em", "strong", "b", "span"]);
 }
 
-module.exports = { loggg, textOnly, textOnlyLength, removeParagraphTags };
+module.exports = { loggg, textOnly, textOnlyLength, cleanParagraphTags };

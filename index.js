@@ -6,8 +6,8 @@ const { getSplitCards } = require("./cards");
 const { generatePdf } = require("./pdf");
 
 // document selectors
-renderSolidity101 = false;
-renderSolidity201 = true;
+renderSolidity101 = true;
+renderSolidity201 = false;
 renderAuditFindings101 = false;
 renderAuditFindings201 = false;
 renderTechniquesAndTools101 = false;

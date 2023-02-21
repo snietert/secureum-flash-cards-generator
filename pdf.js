@@ -14,7 +14,7 @@ async function generatePdf(splitCards, pathAndFilename) {
 
   const pdf = await page.pdf({
     path: pathAndFilename,
-    margin: { top: "0", right: "0", bottom: "0", left: "0" },
+    margin: { top: "8", right: "0", bottom: "0", left: "0" },
     printBackground: true,
     displayHeaderFooter: false,
     format: "A4",
