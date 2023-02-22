@@ -3,7 +3,7 @@ const qrCode = require("qrcode");
 const sanitizeHtml = require("sanitize-html");
 const escape = require("escape-html");
 
-const { textOnlyLength, cleanParagraphTags } = require("./tools");
+const { textOnlyLength, cleanParagraphTags, trimmedMean } = require("./tools");
 
 async function getSplitCards(chunks, headline) {
   var splitCards = [];
@@ -44,7 +44,12 @@ async function getSplitCards(chunks, headline) {
       if (isExpectedTags(afterListItemcardElements, ["p", "ol"])) {
         checkParagraphPlusListStructure(afterListItemCard); // TODO maybe delete!
         splitCards = splitCards.concat(
-          handleParagraphAndOneList(afterListItemcardElements, headline, number)
+          handleParagraphAndOneList(
+            afterListItemcardElements,
+            headline,
+            number,
+            "extraList"
+          )
         );
       } else if (isOnlyParagraphs(afterListItemCard)) {
         splitCards = splitCards.concat(
@@ -117,8 +122,9 @@ function handleParagraphs(nodes, headline, number) {
 
   const { splitLength, clazz } = getClazzAndSplitLength(
     content,
-    0,
-    barcodesCount
+    [],
+    barcodesCount,
+    number
   );
 
   const splitCardContent = [];
@@ -141,7 +147,7 @@ function handleParagraphs(nodes, headline, number) {
   return getCardsForSplitCardContent(splitCardContent, clazz, number, headline);
 }
 
-function handleParagraphAndOneList(nodes, headline, number) {
+function handleParagraphAndOneList(nodes, headline, number, listClazz) {
   const paragraph = nodes[0];
   const list = nodes[1];
 
@@ -162,8 +168,9 @@ function handleParagraphAndOneList(nodes, headline, number) {
   // get the clazz based on full content length
   const { splitLength, clazz } = getClazzAndSplitLength(
     fullContent,
-    1,
-    barcodesCount
+    [list],
+    barcodesCount,
+    number
   );
 
   // get the content of the paragraph
@@ -175,14 +182,18 @@ function handleParagraphAndOneList(nodes, headline, number) {
   // build 2 groups of list items
   const listItemGroups = [[]];
   listItems.forEach((item) => {
+    // Get current item content
     const itemContent = item.toString();
     item = escape(itemContent);
-    if (
+
+    // Calculate the length of current content + content to add (current item)
+    const newLength =
       textOnlyLength(paragraphContent) +
-        textOnlyLength(listItemGroups[0].join("")) +
-        textOnlyLength(itemContent) <
-      splitLength
-    ) {
+      textOnlyLength(listItemGroups[0].join("")) +
+      textOnlyLength(itemContent);
+
+    // Only add to second list if split length is exceeded
+    if (newLength <= splitLength) {
       listItemGroups[0].push(itemContent);
     } else {
       listItemGroups[1] = listItemGroups[1] || [];
@@ -193,12 +204,14 @@ function handleParagraphAndOneList(nodes, headline, number) {
   // build 2 card sides
   const splitCardContent = [];
   splitCardContent[0] = `${paragraphContent}`;
-  splitCardContent[0] += "<ol>";
+  splitCardContent[0] += `<ol class="${listClazz || ""}">`;
   splitCardContent[0] += listItemGroups[0].join("");
   splitCardContent[0] += "</ol>";
 
   if (listItemGroups[1]) {
-    splitCardContent[1] = `<ol start="${listItemGroups[0].length + 1}">`; // TODO: Sometimes is incorrect!
+    splitCardContent[1] = `<ol class="${listClazz || ""}" start="${
+      listItemGroups[0].length + 1
+    }">`; // TODO: Sometimes is incorrect!
     splitCardContent[1] += listItemGroups[1].join("");
     splitCardContent[1] += "</ol>";
   }
@@ -239,6 +252,10 @@ function cleanUpcardContent(content) {
   // add whitespaces to make long expressions break (would overflow layout otherwise)
   content = content.replace("encodeWithSignature(", "encodeWithSignature( ");
   content = content.replace("encodeWithSelector(", "encodeWithSelector( ");
+  content = content.replace(
+    "CALLDATASIZE/CALLDATALOAD/CALLDATACOPY",
+    "CALLDATASIZE / CALLDATALOAD / CALLDATACOPY"
+  );
 
   // remove any leading/trailing whitespace
   return content.trim();
@@ -248,7 +265,7 @@ function enhanceCardContent(content, xOfN) {
   // add highlight to beginning of content on first card page
   if ([null, 1].includes(xOfN)) {
     const colonPosition = content.indexOf(":");
-    const isHeadline = colonPosition !== -1 && colonPosition < 150; // NOTE: Heuristic to estimate if it is a headline
+    const isHeadline = colonPosition !== -1 && colonPosition < 300; // NOTE: Heuristic to estimate if it is a headline
     if (colonPosition && isHeadline) {
       const emPosition = content.indexOf("<em>");
       const emContained = emPosition !== -1 && emPosition < colonPosition;
@@ -315,9 +332,10 @@ function getCardsForSplitCardContent(
   });
 }
 
-function getClazzAndSplitLength(content, listCount, barcodesCount) {
-  // NOTE: Only use content length without HTML tags
-  const length = textOnlyLength(content);
+function getClazzAndSplitLength(content, lists, barcodesCount, number) {
+  const length = textOnlyLength(content); // NOTE: Only use content length without HTML tags
+  const listCount = lists.length;
+
   var clazzAndLength = null;
 
   if (length >= 1800) {
@@ -329,7 +347,7 @@ function getClazzAndSplitLength(content, listCount, barcodesCount) {
   } else if (length >= 1500) {
     clazzAndLength = {
       clazz: "nanoFont",
-      splitLength: listCount > 0 ? 1300 : 2000,
+      splitLength: listCount > 0 ? 1100 : 2000,
       barcodesFactor: 0.1,
     };
   } else if (length >= 1000) {
@@ -341,13 +359,13 @@ function getClazzAndSplitLength(content, listCount, barcodesCount) {
   } else if (length >= 450) {
     clazzAndLength = {
       clazz: "tinyFont",
-      splitLength: listCount > 0 ? 600 : 1000,
+      splitLength: listCount > 0 ? 450 : 1000,
       barcodesFactor: 0.05,
     };
   } else if (length >= 300) {
     clazzAndLength = {
       clazz: "mediumFont",
-      splitLength: listCount > 0 ? 350 : 550,
+      splitLength: listCount > 0 ? 280 : 550,
       barcodesFactor: 0.05,
     };
   } else {
@@ -363,6 +381,34 @@ function getClazzAndSplitLength(content, listCount, barcodesCount) {
     clazzAndLength.splitLength = Math.floor(
       clazzAndLength.splitLength * (1 - clazzAndLength.barcodesFactor)
     );
+  }
+
+  // handle lists with many short items (they stack high and take lots of vertical space)
+  if (listCount > 0) {
+    if (listCount > 1) {
+      throw new Error("handling more tahn one list is not yet implemented!");
+    }
+    // inspect the list for hints of occupying lots of vertical space
+    const childNodes = lists[0].childNodes;
+    if (childNodes.length > 5) {
+      const itemLengths = childNodes.map((item) => {
+        return textOnlyLength(item.toString());
+      });
+      const trimFromBithSides = childNodes.length <= 5 ? 0.25 : 0.1;
+      const mean = trimmedMean(itemLengths, trimFromBithSides);
+
+      // reduce split length for small means
+      const threshold = 30;
+      const reduction = 0.15;
+
+      if (mean < threshold) {
+        clazzAndLength.splitLength =
+          clazzAndLength.splitLength * (1 - reduction);
+      }
+    }
+
+    clazzAndLength.splitLength =
+      number === 90 ? 250 : clazzAndLength.splitLength;
   }
 
   return clazzAndLength;

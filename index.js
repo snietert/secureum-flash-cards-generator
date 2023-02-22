@@ -6,11 +6,14 @@ const { getSplitCards } = require("./cards");
 const { generatePdf } = require("./pdf");
 
 // document selectors
+renderEthereum101 = true;
 renderSolidity101 = true;
 renderSolidity201 = true;
+renderAuditTechniques101 = true;
 renderAuditFindings101 = true;
 renderAuditFindings201 = true;
-renderTechniquesAndTools101 = true;
+renderSecurityPitfalls101 = true;
+renderSecurityPitfalls201 = true;
 
 async function doStuff(options) {
   const {
@@ -49,12 +52,25 @@ async function doStuff(options) {
 }
 
 (async () => {
+  // Ethereum 101
+  if (renderEthereum101) {
+    await doStuff({
+      website: "https://secureum.substack.com/p/ethereum-101",
+      startingNumber: 1,
+      headline: "Ethereum 101",
+      cachePathAndFilename: "./secureum_ethereum_101.html",
+      pdfPathAndFilename: "./secureum_ethereum_101.pdf",
+      selector:
+        "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+    });
+  }
+
   // Solidity 101
   if (renderSolidity101) {
     await doStuff({
       website: "https://secureum.substack.com/p/solidity-101",
       startingNumber: 1,
-      headline: "Secureum Solidity 101",
+      headline: "Solidity 101",
       cachePathAndFilename: "./secureum_solidity_101.html",
       pdfPathAndFilename: "./secureum_solidity_101.pdf",
       selector:
@@ -67,7 +83,7 @@ async function doStuff(options) {
     await doStuff({
       website: "https://secureum.substack.com/p/solidity-201",
       startingNumber: 102,
-      headline: "Secureum Solidity 201",
+      headline: "Solidity 201",
       cachePathAndFilename: "./secureum_solidity_201.html",
       pdfPathAndFilename: "./secureum_solidity_201.pdf",
       selector:
@@ -80,7 +96,7 @@ async function doStuff(options) {
     await doStuff({
       website: "https://secureum.substack.com/p/audit-findings-101",
       startingNumber: 1,
-      headline: "Secureum Audit Findings 101",
+      headline: "Audit Findings 101",
       cachePathAndFilename: "./secureum_audit_findings_101.html",
       pdfPathAndFilename: "./secureum_audit_findings_101.pdf",
       selector:
@@ -93,7 +109,7 @@ async function doStuff(options) {
     await doStuff({
       website: "https://secureum.substack.com/p/audit-findings-201",
       startingNumber: 102,
-      headline: "Secureum Audit Findings 201",
+      headline: "Audit Findings 201",
       cachePathAndFilename: "./secureum_audit_findings_201.html",
       pdfPathAndFilename: "./secureum_audit_findings_201.pdf",
       selector:
@@ -102,13 +118,45 @@ async function doStuff(options) {
   }
 
   // Audit Techniques & Tools 101
-  if (renderTechniquesAndTools101) {
+  if (renderAuditTechniques101) {
     await doStuff({
       website: "https://secureum.substack.com/p/audit-techniques-and-tools-101",
       startingNumber: 1,
-      headline: "Secureum Audit Techniques & Tools 101",
+      headline: "Audit Techniques & Tools 101",
       cachePathAndFilename: "./secureum_audit_techniques_and_tools_101.html",
       pdfPathAndFilename: "./secureum_audit_techniques_and_tools_101.pdf",
+      selector:
+        "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+    });
+  }
+
+  // Security Pitfalls & Best Practices 101
+  if (renderSecurityPitfalls101) {
+    await doStuff({
+      website:
+        "https://secureum.substack.com/p/security-pitfalls-and-best-practices-101",
+      startingNumber: 1,
+      headline: "Security Pitfalls & Best Practices 101",
+      cachePathAndFilename:
+        "./secureum_audit_pitfalls_and_best_practices_101.html",
+      pdfPathAndFilename:
+        "./secureum_audit_pitfalls_and_best_practices_101.pdf",
+      selector:
+        "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
+    });
+  }
+
+  // Security Pitfalls & Best Practices 201
+  if (renderSecurityPitfalls201) {
+    await doStuff({
+      website:
+        "https://secureum.substack.com/p/security-pitfalls-and-best-practices-201",
+      startingNumber: 1,
+      headline: "Security Pitfalls & Best Practices 201",
+      cachePathAndFilename:
+        "./secureum_audit_pitfalls_and_best_practices_201.html",
+      pdfPathAndFilename:
+        "./secureum_audit_pitfalls_and_best_practices_201.pdf",
       selector:
         "#main > div:nth-child(2) > div > div.container > div > article > div:nth-child(4) > div.available-content > div",
     });

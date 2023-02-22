@@ -1,4 +1,5 @@
 const fs = require("fs");
+const axios = require("axios");
 const { loggg } = require("./tools");
 
 async function getContent(website, options) {
@@ -21,6 +22,11 @@ async function getContent(website, options) {
   loggg(`Writing content to cache: ${cachePathAndFilename}`);
   fs.writeFileSync(cachePathAndFilename, html);
   return html;
+}
+
+async function fetchWebsiteContent(website) {
+  loggg("Fetching content from website!");
+  return axios.get(website);
 }
 
 module.exports = { getContent };

@@ -36,15 +36,19 @@ async function getHtmlForSplitCards(splitCards, headline) {
     // footer (uncluding meta info for debugging)
     var metaHtml = "";
     if (meta) {
-      metaHtml = `<span class="sansserif meta">`;
+      metaHtml = `<div class="meta sansserif">`;
       metaHtml += `${card.contentLength}/${card.clazz}`;
-      metaHtml += `<span>`;
+      metaHtml += `<div>`;
     }
 
     var footerHtml = '<div class="footer">';
-    card.barcodes.forEach((code) => {
-      footerHtml += `<span>${code}</span>`;
-    });
+    if (card.barcodes) {
+      footerHtml += `<div class="barcodes">`;
+      card.barcodes.forEach((code) => {
+        footerHtml += `<span class="barcode">${code}</span>`;
+      });
+      footerHtml += `</div>`;
+    }
     footerHtml += metaHtml;
     footerHtml += "</div>";
 
@@ -92,16 +96,26 @@ async function getHtmlForSplitCards(splitCards, headline) {
                 .footer {
                   position: absolute;
                   bottom: 0;
+                  width: 534px;
                 }
   
                 .meta {
                   font-size: 14px;
                   color: red;
+                  float: left;
+                }
+
+                .barcodes {
+                  float: right;
+                }
+
+                .barcode {
+                  margin-left: 20px;
                 }
   
                 h1 {
                   font-size: 24px;
-                  flex: 0.8;
+                  flex: 0.75;
                   margin: 0;
                   padding: 0;
                 }
@@ -110,7 +124,7 @@ async function getHtmlForSplitCards(splitCards, headline) {
                   font-weight: bold;
                   text-align: right;
                   font-size: 24px;
-                  flex: 0.2;
+                  flex: 0.25;
                 }
   
                 body {
@@ -147,9 +161,12 @@ async function getHtmlForSplitCards(splitCards, headline) {
                   margin: 0;
                   padding-left: 20px;
                   list-style-type: lower-latin;
-                  // border: 1px solid green;
                 }
-  
+
+                ol.extraList {
+                  list-style-type: decimal;
+                }
+
                 li {
                   margin: 0;
                 }
@@ -157,36 +174,48 @@ async function getHtmlForSplitCards(splitCards, headline) {
                 ol li::marker {
                   font-weight: bold;
                 }
-  
+
                 .picoFont {
-                  font-size: 11px;
-                  line-height: 130%;
+                  font-size: 10px;
+                  line-height: 120%;
                 }
+
+                .picoFont ol { line-height: 105%; }
   
                 .nanoFont {
                   font-size: 12px;
-                  line-height: 130%;
+                  line-height: 120%;
                 }
+
+                .nanoFont ol { line-height: 105%; }
   
                 .microFont {
                     font-size: 16px;
                     line-height: 130%;
                 }
+
+                .microFont ol { line-height: 115%; }
   
                 .tinyFont {
                     font-size: 18px;
                     line-height: 130%;
                 }
+
+                .tinyFont ol { line-height: 115%; }
   
                 .smallFont {
                     font-size: 22px;
                     line-height: 130%;
                 }
+
+                .smallFont ol { line-height: 115%; }
   
                 .mediumFont {
-                    font-size: 25px;
+                    font-size: 24px;
                     line-height: 130%;
                 }
+
+                .mediumFont ol { line-height: 115%; }
   
                 .standardFont {
                     font-size: 27px;
