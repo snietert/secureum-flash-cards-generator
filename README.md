@@ -27,14 +27,24 @@ That process remembered me of times when I learned vocabulary for school and I w
 - Reading article into data structure that can be processed to extract relevant content: ✅
 - Base logic for splitting article content into flash cards ✅
 - Creating scannable QR codes from links in documents ✅
-- Handle multiple links in a flash card (and links not at the end of an article)
-- Fix issues where content outside of the articles is integrated into flashcards
-- Fix issues where content may exceed the space available on 1 flashard (e.g. split content into front and backside; print 2 sides)
-- Make sure the whol article to PDF conversion logic works with all (list based) Secureum articles.
+- Handle multiple links in a flash card (and links not at the end of an article) ✅
+- Fix issues where content outside of the articles is integrated into flashcards ✅
+- Fix issues where content may exceed the space available on 1 flashard (e.g. split content into front and backside; print 2 sides) ✅
+- Make sure the whol article to PDF conversion logic works with all (list based) Secureum articles. ✅
+- Fix card headline to top right of the card (e.g. showing "Solidity 101/13") ✅
 - Need to polish font sizes, line-height etc. to make cards well readable
-- Fix card headline to top left of the card (e.g. showing "Solidity 101/13")
 - ... more issues will come up for sure
--
+
+## Covered Secureum documents
+
+1. https://secureum.substack.com/p/ethereum-101
+2. https://secureum.substack.com/p/solidity-101
+3. https://secureum.substack.com/p/solidity-201
+4. https://secureum.substack.com/p/audit-findings-101
+5. https://secureum.substack.com/p/audit-findings-201
+6. https://secureum.substack.com/p/audit-techniques-and-tools-101
+7. https://secureum.substack.com/p/security-pitfalls-and-best-practices-101
+8. https://secureum.substack.com/p/security-pitfalls-and-best-practices-201
 
 ## A few notes
 
