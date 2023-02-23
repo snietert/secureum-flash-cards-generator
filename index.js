@@ -6,8 +6,8 @@ const { getSplitCards } = require("./cards");
 const { generatePdf } = require("./pdf");
 
 // document selectors
-renderEthereum101 = false;
-renderSolidity101 = true;
+renderEthereum101 = true;
+renderSolidity101 = false;
 renderSolidity201 = false;
 renderAuditTechniques101 = false;
 renderAuditFindings101 = false;
@@ -55,8 +55,8 @@ async function doStuff(options) {
 (async () => {
   // default formats
   const standardFontFormat = [
-    [1800, 1650, 2200, "nanoFont", 0.1],
-    [1500, 1400, 2000, "tinyFont", 0.1],
+    [2400, 1650, 2200, "nanoFont", 0.1],
+    [1500, 1300, 2000, "tinyFont", 0.1],
     [1000, 900, 1000, "smallFont", 0.1],
     [425, 500, 1000, "mediumFont", 0.05],
     [0, 425, 550, "standardFont", 0.1],
@@ -71,6 +71,24 @@ async function doStuff(options) {
       formatting: {
         fonts: {
           standard: standardFontFormat,
+          pages: {
+            32: [null, 800, null, "mediumFont", 0.05],
+            37: [null, 800, null, "mediumFont", 0.05],
+            43: [null, 800, null, "mediumFont", 0.05],
+            52: [null, 800, null, "mediumFont", 0.05],
+            54: [null, 1100, null, "smallFont", 0.1],
+            66: [null, 250, null, "standardFont", 0.1],
+            67: [null, 400, null, "mediumFont", 0.05],
+            68: [null, 400, null, "mediumFont", 0.05],
+            70: [null, 700, null, "smallFont", 0.1],
+            72: [null, 400, null, "mediumFont", 0.05],
+            82: [null, 800, null, "mediumFont", 0.05],
+            91: [null, 650, null, "mediumFont", 0.05],
+            94: [null, 800, null, "mediumFont", 0.05],
+            96: [null, 1800, null, "tinyFont", 0.1],
+            98: [null, 800, null, "mediumFont", 0.05],
+            101: [null, 600, null, "mediumFont", 0.05],
+          },
         },
       },
       cachePathAndFilename: "./secureum_ethereum_101.html",

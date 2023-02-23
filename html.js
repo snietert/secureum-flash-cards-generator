@@ -202,7 +202,7 @@ async function getHtmlForSplitCards(splitCards, headline) {
                 .mediumFont ol { line-height: 120%; }
   
                 .standardFont {
-                    font-size: 24px;
+                    font-size: 22px;
                     line-height: 130%;
                 }
                 .standardFont ol { line-height: 120%; }
