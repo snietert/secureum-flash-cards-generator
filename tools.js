@@ -19,7 +19,7 @@ function textOnlyLength(content) {
 }
 
 function cleanParagraphTags(content) {
-  return striptags(content, ["p", "i", "em", "strong", "b", "span"]);
+  return striptags(content, ["p", "i", "em", "b", "strong", "span", "a"]);
 }
 
 // NOTE: Taken from https://gist.github.com/raymyers/44807526ca4fdf6d8db1a7d545c7e2c8

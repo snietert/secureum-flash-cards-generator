@@ -6,19 +6,20 @@ const { getSplitCards } = require("./cards");
 const { generatePdf } = require("./pdf");
 
 // document selectors
-renderEthereum101 = true;
+renderEthereum101 = false;
 renderSolidity101 = true;
-renderSolidity201 = true;
-renderAuditTechniques101 = true;
-renderAuditFindings101 = true;
-renderAuditFindings201 = true;
-renderSecurityPitfalls101 = true;
-renderSecurityPitfalls201 = true;
+renderSolidity201 = false;
+renderAuditTechniques101 = false;
+renderAuditFindings101 = false;
+renderAuditFindings201 = false;
+renderSecurityPitfalls101 = false;
+renderSecurityPitfalls201 = false;
 
 async function doStuff(options) {
   const {
     website,
     headline,
+    formatting,
     cachePathAndFilename,
     pdfPathAndFilename,
     selector,
@@ -45,19 +46,33 @@ async function doStuff(options) {
   const chunks = getChunks(hlContent);
 
   // get cards for chunks
-  const splitCards = await getSplitCards(chunks, headline);
+  const splitCards = await getSplitCards(chunks, headline, formatting);
 
   // generate PDF from cards content
   await generatePdf(splitCards, pdfPathAndFilename);
 }
 
 (async () => {
+  // default formats
+  const standardFontFormat = [
+    [1800, 1650, 2200, "nanoFont", 0.1],
+    [1500, 1400, 2000, "tinyFont", 0.1],
+    [1000, 900, 1000, "smallFont", 0.1],
+    [425, 500, 1000, "mediumFont", 0.05],
+    [0, 425, 550, "standardFont", 0.1],
+  ];
+
   // Ethereum 101
   if (renderEthereum101) {
     await doStuff({
       website: "https://secureum.substack.com/p/ethereum-101",
       startingNumber: 1,
       headline: "Ethereum 101",
+      formatting: {
+        fonts: {
+          standard: standardFontFormat,
+        },
+      },
       cachePathAndFilename: "./secureum_ethereum_101.html",
       pdfPathAndFilename: "./secureum_ethereum_101.pdf",
       selector:
@@ -71,6 +86,27 @@ async function doStuff(options) {
       website: "https://secureum.substack.com/p/solidity-101",
       startingNumber: 1,
       headline: "Solidity 101",
+      formatting: {
+        fonts: {
+          standard: standardFontFormat,
+          pages: {
+            18: [null, 800, null, "mediumFont", 0.05],
+            23: [null, 800, null, "mediumFont", 0.05],
+            40: [null, 800, null, "mediumFont", 0.05],
+            42: [null, 800, null, "mediumFont", 0.05],
+            45: [null, 800, null, "mediumFont", 0.05],
+            55: [null, 800, null, "mediumFont", 0.05],
+            57: [null, 800, null, "mediumFont", 0.05],
+            72: [null, 800, null, "mediumFont", 0.05],
+            78: [null, 800, null, "mediumFont", 0.05],
+            49: [null, 1200, null, "smallFont", 0.1],
+            52: [null, 1100, null, "smallFont", 0.1],
+            68: [null, 500, null, "standardFont", 0.1],
+            86: [1000, 1500, 1000, "smallFont", 0.1],
+            // 65: [null, 800, null, "mediumFont", 0.05],
+          },
+        },
+      },
       cachePathAndFilename: "./secureum_solidity_101.html",
       pdfPathAndFilename: "./secureum_solidity_101.pdf",
       selector:
@@ -84,6 +120,11 @@ async function doStuff(options) {
       website: "https://secureum.substack.com/p/solidity-201",
       startingNumber: 102,
       headline: "Solidity 201",
+      formatting: {
+        fonts: {
+          standard: standardFontFormat,
+        },
+      },
       cachePathAndFilename: "./secureum_solidity_201.html",
       pdfPathAndFilename: "./secureum_solidity_201.pdf",
       selector:
@@ -97,6 +138,11 @@ async function doStuff(options) {
       website: "https://secureum.substack.com/p/audit-findings-101",
       startingNumber: 1,
       headline: "Audit Findings 101",
+      formatting: {
+        fonts: {
+          standard: standardFontFormat,
+        },
+      },
       cachePathAndFilename: "./secureum_audit_findings_101.html",
       pdfPathAndFilename: "./secureum_audit_findings_101.pdf",
       selector:
@@ -110,6 +156,11 @@ async function doStuff(options) {
       website: "https://secureum.substack.com/p/audit-findings-201",
       startingNumber: 102,
       headline: "Audit Findings 201",
+      formatting: {
+        fonts: {
+          standard: standardFontFormat,
+        },
+      },
       cachePathAndFilename: "./secureum_audit_findings_201.html",
       pdfPathAndFilename: "./secureum_audit_findings_201.pdf",
       selector:
@@ -123,6 +174,11 @@ async function doStuff(options) {
       website: "https://secureum.substack.com/p/audit-techniques-and-tools-101",
       startingNumber: 1,
       headline: "Audit Techniques & Tools 101",
+      formatting: {
+        fonts: {
+          standard: standardFontFormat,
+        },
+      },
       cachePathAndFilename: "./secureum_audit_techniques_and_tools_101.html",
       pdfPathAndFilename: "./secureum_audit_techniques_and_tools_101.pdf",
       selector:
@@ -137,6 +193,11 @@ async function doStuff(options) {
         "https://secureum.substack.com/p/security-pitfalls-and-best-practices-101",
       startingNumber: 1,
       headline: "Security Pitfalls & Best Practices 101",
+      formatting: {
+        fonts: {
+          standard: standardFontFormat,
+        },
+      },
       cachePathAndFilename:
         "./secureum_audit_pitfalls_and_best_practices_101.html",
       pdfPathAndFilename:
@@ -153,6 +214,11 @@ async function doStuff(options) {
         "https://secureum.substack.com/p/security-pitfalls-and-best-practices-201",
       startingNumber: 1,
       headline: "Security Pitfalls & Best Practices 201",
+      formatting: {
+        fonts: {
+          standard: standardFontFormat,
+        },
+      },
       cachePathAndFilename:
         "./secureum_audit_pitfalls_and_best_practices_201.html",
       pdfPathAndFilename:

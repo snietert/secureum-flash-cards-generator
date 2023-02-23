@@ -3,10 +3,19 @@ const qrCode = require("qrcode");
 const sanitizeHtml = require("sanitize-html");
 const escape = require("escape-html");
 
-const { textOnlyLength, cleanParagraphTags, trimmedMean } = require("./tools");
+const {
+  textOnlyLength,
+  cleanParagraphTags,
+  trimmedMean,
+  loggg,
+} = require("./tools");
 
-async function getSplitCards(chunks, headline) {
+async function getSplitCards(chunks, headline, formatting) {
   var splitCards = [];
+
+  if (!formatting) {
+    throw new Error("no formatting supplied");
+  }
 
   // iterate all chunks
   for (let i = 0; i < chunks.length; i++) {
@@ -27,11 +36,22 @@ async function getSplitCards(chunks, headline) {
 
     if (isPandOl) {
       splitCards = splitCards.concat(
-        handleParagraphAndOneList(chunkElementOneChildNodes, headline, number)
+        handleParagraphAndOneList(
+          chunkElementOneChildNodes,
+          headline,
+          number,
+          null,
+          formatting
+        )
       );
     } else if (isP) {
       splitCards = splitCards.concat(
-        handleParagraphs(chunkElementOneChildNodes, headline, number)
+        handleParagraphs(
+          chunkElementOneChildNodes,
+          headline,
+          number,
+          formatting
+        )
       );
     }
 
@@ -48,12 +68,18 @@ async function getSplitCards(chunks, headline) {
             afterListItemcardElements,
             headline,
             number,
-            "extraList"
+            "extraList",
+            formatting
           )
         );
       } else if (isOnlyParagraphs(afterListItemCard)) {
         splitCards = splitCards.concat(
-          handleParagraphs(afterListItemcardElements, headline, number)
+          handleParagraphs(
+            afterListItemcardElements,
+            headline,
+            number,
+            formatting
+          )
         );
       }
     }
@@ -113,7 +139,7 @@ function isOnlyParagraphs(items) {
   return true;
 }
 
-function handleParagraphs(nodes, headline, number) {
+function handleParagraphs(nodes, headline, number, formatting) {
   var content = nodes.map((n) => n.toString()).join("");
   content = cleanParagraphTags(content);
 
@@ -124,7 +150,8 @@ function handleParagraphs(nodes, headline, number) {
     content,
     [],
     barcodesCount,
-    number
+    number,
+    formatting
   );
 
   const splitCardContent = [];
@@ -147,7 +174,13 @@ function handleParagraphs(nodes, headline, number) {
   return getCardsForSplitCardContent(splitCardContent, clazz, number, headline);
 }
 
-function handleParagraphAndOneList(nodes, headline, number, listClazz) {
+function handleParagraphAndOneList(
+  nodes,
+  headline,
+  number,
+  listClazz,
+  formatting
+) {
   const paragraph = nodes[0];
   const list = nodes[1];
 
@@ -170,7 +203,8 @@ function handleParagraphAndOneList(nodes, headline, number, listClazz) {
     fullContent,
     [list],
     barcodesCount,
-    number
+    number,
+    formatting
   );
 
   // get the content of the paragraph
@@ -244,15 +278,11 @@ function prepareContent(card) {
 }
 
 function cleanUpcardContent(content) {
-  // remove all unallowed tags and link text
-  // const allowedTags = ["ol", "ul", "li", "p", "em", "i"];
-  // content = sanitizeHtml(content, { allowedTags });
-  content = content.replace("(See here)", "");
-
   // add whitespaces to make long expressions break (would overflow layout otherwise)
   content = content.replace("encodeWithSignature(", "encodeWithSignature( ");
   content = content.replace("encodeWithSelector(", "encodeWithSelector( ");
   content = content.replace(
+    // TODO make general or move into document specific input
     "CALLDATASIZE/CALLDATALOAD/CALLDATACOPY",
     "CALLDATASIZE / CALLDATALOAD / CALLDATACOPY"
   );
@@ -264,8 +294,9 @@ function cleanUpcardContent(content) {
 function enhanceCardContent(content, xOfN) {
   // add highlight to beginning of content on first card page
   if ([null, 1].includes(xOfN)) {
+    const maxColonPosition = 200;
     const colonPosition = content.indexOf(":");
-    const isHeadline = colonPosition !== -1 && colonPosition < 300; // NOTE: Heuristic to estimate if it is a headline
+    const isHeadline = colonPosition !== -1 && colonPosition < maxColonPosition; // NOTE: Heuristic to estimate if it is a headline
     if (colonPosition && isHeadline) {
       const emPosition = content.indexOf("<em>");
       const emContained = emPosition !== -1 && emPosition < colonPosition;
@@ -332,49 +363,30 @@ function getCardsForSplitCardContent(
   });
 }
 
-function getClazzAndSplitLength(content, lists, barcodesCount, number) {
+function getClazzAndSplitLength(
+  content,
+  lists,
+  barcodesCount,
+  number,
+  formatting
+) {
   const length = textOnlyLength(content); // NOTE: Only use content length without HTML tags
   const listCount = lists.length;
+  const { standard, pages } = formatting.fonts;
 
-  var clazzAndLength = null;
+  // get font from page specific formatting (standard overwrites to fix edge cases)
+  var font = pages && pages[number];
 
-  if (length >= 1800) {
-    clazzAndLength = {
-      clazz: "picoFont",
-      splitLength: listCount > 0 ? 1650 : 2200,
-      barcodesFactor: 0.1,
-    };
-  } else if (length >= 1500) {
-    clazzAndLength = {
-      clazz: "nanoFont",
-      splitLength: listCount > 0 ? 1100 : 2000,
-      barcodesFactor: 0.1,
-    };
-  } else if (length >= 1000) {
-    clazzAndLength = {
-      clazz: "microFont",
-      splitLength: listCount > 0 ? 700 : 1000,
-      barcodesFactor: 0.1,
-    };
-  } else if (length >= 450) {
-    clazzAndLength = {
-      clazz: "tinyFont",
-      splitLength: listCount > 0 ? 450 : 1000,
-      barcodesFactor: 0.05,
-    };
-  } else if (length >= 300) {
-    clazzAndLength = {
-      clazz: "mediumFont",
-      splitLength: listCount > 0 ? 280 : 550,
-      barcodesFactor: 0.05,
-    };
-  } else {
-    clazzAndLength = {
-      clazz: "standardFont",
-      splitLength: listCount > 0 ? 250 : 400,
-      barcodesFactor: 0.025,
-    };
+  // get font from standard formatting for content length
+  if (!font) {
+    font = standard.find((font) => length >= font[0]);
   }
+
+  const clazzAndLength = {
+    clazz: font[3],
+    splitLength: listCount > 0 ? font[1] : font[0][2],
+    barcodesFactor: font[4],
+  };
 
   // handle barcodes
   if (barcodesCount) {

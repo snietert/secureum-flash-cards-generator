@@ -41,16 +41,17 @@ async function getHtmlForSplitCards(splitCards, headline) {
       metaHtml += `<div>`;
     }
 
-    var footerHtml = '<div class="footer">';
-    if (card.barcodes) {
+    var footerHtml = "";
+    if (meta || card.barcodes.length) {
+      footerHtml = '<div class="footer">';
       footerHtml += `<div class="barcodes">`;
       card.barcodes.forEach((code) => {
         footerHtml += `<span class="barcode">${code}</span>`;
       });
       footerHtml += `</div>`;
+      footerHtml += metaHtml;
+      footerHtml += "</div>";
     }
-    footerHtml += metaHtml;
-    footerHtml += "</div>";
 
     // main content
     var contentHtml = `<div class="${card.clazz} content">${card.content}${footerHtml}</div>`;
@@ -78,6 +79,8 @@ async function getHtmlForSplitCards(splitCards, headline) {
                 .card {
                   height: 100%;
                   position: relative;
+                  width: 552px;
+                  height: 387px;
                 }
   
                 .content {
@@ -95,8 +98,9 @@ async function getHtmlForSplitCards(splitCards, headline) {
   
                 .footer {
                   position: absolute;
-                  bottom: 0;
                   width: 534px;
+                  bottom: 0;
+                  z-index: -1;
                 }
   
                 .meta {
@@ -149,8 +153,7 @@ async function getHtmlForSplitCards(splitCards, headline) {
                 }
   
                 td {
-                    width: 530px;
-                    height: 385px; // 240px; // 231,86px; // 185.49px;
+                  
                     border: 1px dashed #ddd;
                     padding: 0;
                     margin: 0;
@@ -174,56 +177,35 @@ async function getHtmlForSplitCards(splitCards, headline) {
                   font-weight: bold;
                 }
 
-                .picoFont {
-                  font-size: 10px;
-                  line-height: 120%;
-                }
-
-                .picoFont ol { line-height: 105%; }
-  
                 .nanoFont {
-                  font-size: 12px;
-                  line-height: 120%;
+                  font-size: 10px;
+                  line-height: 130%;
                 }
-
-                .nanoFont ol { line-height: 105%; }
+                .nanoFont ol { line-height: 120%; }
   
-                .microFont {
+                .tinyFont {
+                  font-size: 12px;
+                  line-height: 130%;
+                }
+                .tinyFont ol { line-height: 120%; }
+  
+                .smallFont {
                     font-size: 16px;
                     line-height: 130%;
                 }
-
-                .microFont ol { line-height: 115%; }
-  
-                .tinyFont {
-                    font-size: 18px;
-                    line-height: 130%;
-                }
-
-                .tinyFont ol { line-height: 115%; }
-  
-                .smallFont {
-                    font-size: 22px;
-                    line-height: 130%;
-                }
-
-                .smallFont ol { line-height: 115%; }
+                .smallFont ol { line-height: 120%; }
   
                 .mediumFont {
+                    font-size: 20px;
+                    line-height: 130%;
+                }
+                .mediumFont ol { line-height: 120%; }
+  
+                .standardFont {
                     font-size: 24px;
                     line-height: 130%;
                 }
-
-                .mediumFont ol { line-height: 115%; }
-  
-                .standardFont {
-                    font-size: 27px;
-                    line-height: 130%;
-                }
-  
-                .largeFont {
-                    font-size: 32px;
-                }
+                .standardFont ol { line-height: 120%; }
   
                 .sansserif {
                   font-family: Helvetica, Verdana, Arial, sans-serif;
