@@ -141,7 +141,6 @@ async function getHtmlForSplitCards(splitCards, headline) {
   
                 table {
                     width: 100%;
-                    margin-top: 7px;
                     border-collapse: collapse;
                 }
   
