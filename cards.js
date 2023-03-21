@@ -17,6 +17,10 @@ async function getSplitCards(chunks, headline, formatting) {
     throw new Error("no formatting supplied");
   }
 
+  // get formattings (split for default and additional pages)
+  const defaultPagesFormatting = getFormatting(formatting, false);
+  const additionalPagesFormatting = getFormatting(formatting, true);
+
   // iterate all chunks
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
@@ -41,7 +45,7 @@ async function getSplitCards(chunks, headline, formatting) {
           headline,
           number,
           null,
-          formatting
+          defaultPagesFormatting
         )
       );
     } else if (isP) {
@@ -50,7 +54,7 @@ async function getSplitCards(chunks, headline, formatting) {
           chunkElementOneChildNodes,
           headline,
           number,
-          formatting
+          defaultPagesFormatting
         )
       );
     }
@@ -69,7 +73,7 @@ async function getSplitCards(chunks, headline, formatting) {
             headline,
             number,
             "extraList",
-            formatting
+            additionalPagesFormatting
           )
         );
       } else if (isOnlyParagraphs(afterListItemCard)) {
@@ -78,7 +82,7 @@ async function getSplitCards(chunks, headline, formatting) {
             afterListItemcardElements,
             headline,
             number,
-            formatting
+            additionalPagesFormatting
           )
         );
       }
@@ -92,6 +96,23 @@ async function getSplitCards(chunks, headline, formatting) {
   }
 
   return splitCards;
+}
+
+function getFormatting(formatting, isAdditionalContent) {
+  const newFormatting = JSON.parse(JSON.stringify(formatting));
+  const pages = Object.keys(formatting.fonts.pages);
+
+  pages.forEach((page) => {
+    if (isAdditionalContent && newFormatting.fonts.pages[page][1]) {
+      // formatting for additional pages if set
+      newFormatting.fonts.pages[page] = newFormatting.fonts.pages[page][1];
+    } else {
+      // formatting for default pages (and additional pages if no extra formatting set)
+      newFormatting.fonts.pages[page] = newFormatting.fonts.pages[page][0];
+    }
+  });
+
+  return newFormatting;
 }
 
 function isExpectedTags(nodes, expectedTags) {
@@ -375,7 +396,7 @@ function getClazzAndSplitLength(
   const { standard, pages } = formatting.fonts;
 
   // get font from page specific formatting (standard overwrites to fix edge cases)
-  var font = pages && pages[number];
+  var font = pages && pages[("" + number).replace("+", "")]; // TODO solve differently
 
   // get font from standard formatting for content length
   if (!font) {
@@ -384,7 +405,7 @@ function getClazzAndSplitLength(
 
   const clazzAndLength = {
     clazz: font[3],
-    splitLength: listCount > 0 ? font[1] : font[0][2],
+    splitLength: listCount > 0 ? font[1] : font[2],
     barcodesFactor: font[4],
   };
 
@@ -400,6 +421,7 @@ function getClazzAndSplitLength(
     if (listCount > 1) {
       throw new Error("handling more tahn one list is not yet implemented!");
     }
+
     // inspect the list for hints of occupying lots of vertical space
     const childNodes = lists[0].childNodes;
     if (childNodes.length > 5) {
@@ -419,8 +441,9 @@ function getClazzAndSplitLength(
       }
     }
 
-    clazzAndLength.splitLength =
-      number === 90 ? 250 : clazzAndLength.splitLength;
+    // TODO fix! (seems to belong to 1 particular card!)
+    // clazzAndLength.splitLength =
+    //   number === 90 ? 250 : clazzAndLength.splitLength;
   }
 
   return clazzAndLength;

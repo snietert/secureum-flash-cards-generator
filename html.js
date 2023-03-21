@@ -139,8 +139,6 @@ async function getHtmlForSplitCards(splitCards, headline) {
                     margin: 0;
                     margin-bottom: 8px;
                     padding: 0;
-                    // line-height: 120%;
-                    // border: 1px solid red;
                 }
   
                 table {
@@ -153,7 +151,6 @@ async function getHtmlForSplitCards(splitCards, headline) {
                 }
   
                 td {
-                  
                     border: 1px dashed #ddd;
                     padding: 0;
                     margin: 0;
@@ -163,6 +160,10 @@ async function getHtmlForSplitCards(splitCards, headline) {
                   margin: 0;
                   padding-left: 20px;
                   list-style-type: lower-latin;
+                }
+
+                ol ol {
+                  list-style-type: lower-roman;
                 }
 
                 ol.extraList {
