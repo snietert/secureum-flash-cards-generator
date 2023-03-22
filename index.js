@@ -6,8 +6,8 @@ const { getSplitCards } = require("./cards");
 const { generatePdf } = require("./pdf");
 
 // document selectors
-renderEthereum101 = true; // NOTE: reviewed (PDF vs. website)
-renderSolidity101 = false;
+renderEthereum101 = false; // NOTE: reviewed (PDF vs. website)
+renderSolidity101 = true; // NOTE: reviewed (PDF vs. website)
 renderSolidity201 = false; // NOTE: reviewed (PDF vs. website)
 renderAuditTechniques101 = false; // NOTE: reviewed (PDF vs. website)
 renderAuditFindings101 = false;
@@ -115,20 +115,32 @@ async function doStuff(options) {
         fonts: {
           standard: standardFontFormat,
           pages: {
+            9: [[null, 1200, null, "smallFont", 0.1]],
+            16: [[null, 1200, null, "smallFont", 0.1]],
             18: [[null, 800, null, "mediumFont", 0.05]],
-            23: [[null, 800, null, "mediumFont", 0.05]],
-            40: [[null, 800, null, "mediumFont", 0.05]],
+            21: [[null, 1200, null, "smallFont", 0.1]],
+            23: [[null, 1200, null, "smallFont", 0.1]],
+            34: [[null, 1200, null, "smallFont", 0.1]],
+            40: [[null, 1200, null, "smallFont", 0.1]],
             42: [[null, 800, null, "mediumFont", 0.05]],
-            45: [[null, 800, null, "mediumFont", 0.05]],
-            55: [[null, 800, null, "mediumFont", 0.05]],
-            57: [[null, 800, null, "mediumFont", 0.05]],
-            72: [[null, 800, null, "mediumFont", 0.05]],
-            78: [[null, 800, null, "mediumFont", 0.05]],
+            45: [[null, 1200, null, "smallFont", 0.1]],
             49: [[null, 1200, null, "smallFont", 0.1]],
             52: [[null, 1100, null, "smallFont", 0.1]],
+            55: [[null, 800, null, "mediumFont", 0.05]],
+            56: [[null, 1200, null, "smallFont", 0.1]],
+            57: [[null, 800, null, "mediumFont", 0.05]],
+            59: [[null, 1200, null, "smallFont", 0.1]],
+            63: [[null, 730, null, "smallFont", 0.1]],
+            65: [[null, 800, null, "smallFont", 0.1]],
+            67: [[null, 1200, null, "smallFont", 0.1]],
             68: [[null, 500, null, "standardFont", 0.1]],
-            86: [[1000, 1500, 1000, "smallFont", 0.1]],
-            // 65: [[null, 800, null, "mediumFont", 0.05]],
+            69: [[null, 1200, null, "smallFont", 0.1]],
+            70: [[null, 1200, null, "smallFont", 0.1]],
+            72: [[null, 800, null, "mediumFont", 0.05]],
+            77: [[null, 1200, null, "smallFont", 0.1]],
+            78: [[null, 1200, null, "smallFont", 0.1]],
+            98: [[null, 700, null, "smallFont", 0.1]],
+            99: [[null, 850, null, "smallFont", 0.1]],
           },
         },
       },
