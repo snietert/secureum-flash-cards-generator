@@ -93,6 +93,10 @@ async function getSplitCards(chunks, headline, formatting) {
 }
 
 function getFormatting(formatting, isAdditionalContent) {
+  if (!formatting.fonts.pages) {
+    return formatting;
+  }
+
   const newFormatting = JSON.parse(JSON.stringify(formatting));
   const pages = Object.keys(formatting.fonts.pages);
 
