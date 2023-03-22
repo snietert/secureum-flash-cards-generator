@@ -6,13 +6,13 @@ const { getSplitCards } = require("./cards");
 const { generatePdf } = require("./pdf");
 
 // document selectors
-renderEthereum101 = false; // NOTE: reviewed (PDF vs. website)
-renderSolidity101 = false; // NOTE: reviewed (PDF vs. website)
-renderSolidity201 = false; // NOTE: reviewed (PDF vs. website)
-renderAuditTechniques101 = false; // NOTE: reviewed (PDF vs. website)
-renderAuditFindings101 = false; // NOTE: reviewed (PDF vs. website)
-renderAuditFindings201 = false; // NOTE: reviewed (PDF vs. website)
-renderSecurityPitfalls101 = false; // NOTE: reviewed (PDF vs. website)
+renderEthereum101 = true; // NOTE: reviewed (PDF vs. website)
+renderSolidity101 = true; // NOTE: reviewed (PDF vs. website)
+renderSolidity201 = true; // NOTE: reviewed (PDF vs. website)
+renderAuditTechniques101 = true; // NOTE: reviewed (PDF vs. website)
+renderAuditFindings101 = true; // NOTE: reviewed (PDF vs. website)
+renderAuditFindings201 = true; // NOTE: reviewed (PDF vs. website)
+renderSecurityPitfalls101 = true; // NOTE: reviewed (PDF vs. website)
 renderSecurityPitfalls201 = true; // NOTE: reviewed (PDF vs. website)
 
 async function doStuff(options) {
