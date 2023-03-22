@@ -343,6 +343,13 @@ async function getBarcodes(content) {
   const links = getLinks(content);
   const barcodes = [];
 
+  /* NOTE: We ignore barcodes where there would be too many
+   like in card 30 of https://secureum.substack.com/p/audit-techniques-and-tools-101 */
+  // TODO: maybe solve differently
+  if (links.length > 8) {
+    return ["(QR codes omitted)"];
+  }
+
   if (links) {
     for (const link of links) {
       barcodes.push(
