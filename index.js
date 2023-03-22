@@ -11,8 +11,8 @@ renderSolidity101 = false; // NOTE: reviewed (PDF vs. website)
 renderSolidity201 = false; // NOTE: reviewed (PDF vs. website)
 renderAuditTechniques101 = false; // NOTE: reviewed (PDF vs. website)
 renderAuditFindings101 = false; // NOTE: reviewed (PDF vs. website)
-renderAuditFindings201 = true;
-renderSecurityPitfalls101 = false;
+renderAuditFindings201 = false; // NOTE: reviewed (PDF vs. website)
+renderSecurityPitfalls101 = true; // NOTE: reviewed (PDF vs. website)
 renderSecurityPitfalls201 = false;
 
 async function doStuff(options) {
@@ -408,6 +408,9 @@ async function doStuff(options) {
       formatting: {
         fonts: {
           standard: standardFontFormat,
+          pages: {
+            11: [[null, null, 2000, "smallFont", 0.1]],
+          },
         },
       },
       cachePathAndFilename:
