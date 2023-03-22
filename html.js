@@ -1,6 +1,6 @@
 // TODO make env vars
-const logHtml = false;
-const meta = false;
+const logHtml = false; // NOTE: Log generated HTML of all cards
+const meta = false; // NOTE: Whether to render used formatting on card
 
 async function getHtmlForSplitCards(splitCards, headline) {
   // Prepare HTML to be rendered

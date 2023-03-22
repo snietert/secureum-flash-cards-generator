@@ -8,8 +8,8 @@ const { generatePdf } = require("./pdf");
 // document selectors
 renderEthereum101 = false;
 renderSolidity101 = false;
-renderSolidity201 = true;
-renderAuditTechniques101 = false;
+renderSolidity201 = false; // NOTE: reviewed (PDF vs. website)
+renderAuditTechniques101 = true; // NOTE: reviewed (PDF vs. website)
 renderAuditFindings101 = false;
 renderAuditFindings201 = false;
 renderSecurityPitfalls101 = false;
@@ -225,6 +225,49 @@ async function doStuff(options) {
       formatting: {
         fonts: {
           standard: standardFontFormat,
+          pages: {
+            7: [[null, 800, null, "mediumFont", 0.05]],
+            11: [[null, 1000, null, "tinyFont", 0.1]],
+            12: [[null, 1000, null, "smallFont", 0.1]],
+            15: [[null, 400, null, "mediumFont", 0.05]],
+            19: [[null, null, 1000, "mediumFont", 0.05]],
+            23: [[null, 1000, null, "smallFont", 0.1]],
+            24: [[null, 1000, null, "smallFont", 0.1]],
+            25: [[null, 1000, null, "smallFont", 0.1]],
+            27: [[null, null, 1000, "mediumFont", 0.05]],
+            28: [[null, null, 1000, "mediumFont", 0.05]],
+            29: [[null, 1000, null, "mediumFont", 0.05]],
+            34: [[null, 1000, null, "smallFont", 0.1]],
+            38: [[null, 1000, null, "smallFont", 0.1]],
+            39: [[null, 1000, null, "mediumFont", 0.05]],
+            40: [[null, 1000, null, "smallFont", 0.1]],
+            41: [[null, 1000, null, "smallFont", 0.1]],
+            42: [[null, 1000, null, "smallFont", 0.1]],
+            43: [[null, 1000, null, "smallFont", 0.1]],
+            44: [[null, 1000, null, "smallFont", 0.1]],
+            46: [[null, 1000, null, "smallFont", 0.1]],
+            51: [[null, 1000, null, "smallFont", 0.1]],
+            54: [[null, 1000, null, "smallFont", 0.1]],
+            57: [[null, 1000, null, "smallFont", 0.1]],
+            63: [[null, 1000, null, "smallFont", 0.1]],
+            65: [[null, 1000, null, "smallFont", 0.1]],
+            70: [[null, 600, null, "standardFont", 0.1]],
+            80: [[null, 800, null, "smallFont", 0.1]],
+            81: [[null, 1000, null, "smallFont", 0.1]],
+            82: [[null, 1000, null, "smallFont", 0.1]],
+            83: [[null, 1000, null, "smallFont", 0.1]],
+            86: [[null, 1000, null, "mediumFont", 0.05]],
+            88: [[null, 1000, null, "smallFont", 0.1]],
+            89: [[null, 1000, null, "smallFont", 0.1]],
+            90: [[null, 1000, null, "mediumFont", 0.05]],
+            92: [[null, 600, null, "mediumFont", 0.05]],
+            93: [[null, 1000, null, "smallFont", 0.1]],
+            94: [[null, 1000, null, "smallFont", 0.1]],
+            95: [[null, 750, null, "smallFont", 0.1]],
+            96: [[null, 300, null, "mediumFont", 0.05]],
+            98: [[null, 2000, null, "tinyFont", 0.1]],
+            99: [[null, 1000, null, "smallFont", 0.1]],
+          },
         },
       },
       cachePathAndFilename: "./secureum_audit_techniques_and_tools_101.html",
