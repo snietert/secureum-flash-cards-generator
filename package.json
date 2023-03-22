@@ -12,7 +12,6 @@
     "pdf-creator-node": "^2.3.5",
     "puppeteer": "^19.6.2",
     "qrcode": "^1.5.1",
-    "sanitize-html": "^2.9.0",
     "striptags": "^3.2.0"
   }
 }

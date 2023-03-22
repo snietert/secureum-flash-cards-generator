@@ -1,14 +1,8 @@
 const extractUrls = require("extract-urls");
 const qrCode = require("qrcode");
-const sanitizeHtml = require("sanitize-html");
 const escape = require("escape-html");
 
-const {
-  textOnlyLength,
-  cleanParagraphTags,
-  trimmedMean,
-  loggg,
-} = require("./tools");
+const { textOnlyLength, cleanParagraphTags, trimmedMean } = require("./tools");
 
 async function getSplitCards(chunks, headline, formatting) {
   var splitCards = [];
