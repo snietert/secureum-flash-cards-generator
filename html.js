@@ -151,7 +151,7 @@ async function getHtmlForSplitCards(splitCards, headline) {
                 }
   
                 td {
-                    border: 1px dashed #ddd;
+                    border: 1px dashed #000;
                     padding: 0;
                     margin: 0;
                 }
