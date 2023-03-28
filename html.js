@@ -140,6 +140,10 @@ async function getHtmlForSplitCards(splitCards, headline) {
                     margin-bottom: 8px;
                     padding: 0;
                 }
+
+                a {
+                  color: #000;
+                }
   
                 table {
                     width: 100%;
