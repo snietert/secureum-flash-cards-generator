@@ -434,6 +434,7 @@ async function doStuff(options) {
           standard: standardFontFormat,
           pages: {
             130: [[null, null, 1000, "standardFont", 0.1]],
+            193: [[null, null, 1000, "smallFont", 0.1]],
           },
         },
       },
